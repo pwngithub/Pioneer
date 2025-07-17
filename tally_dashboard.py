@@ -1,100 +1,96 @@
-import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
+import streamlit as st
+import plotly.express as px
 
 def run(df):
-    st.header("📊 Monthly Customer Activity Dashboard")
+    st.set_page_config(page_title="Customer Activity Report", layout="wide")
+    st.markdown("""<div style="text-align:center;"><img src='https://images.squarespace-cdn.com/content/v1/651eb4433b13e72c1034f375/369c5df0-5363-4827-b041-1add0367f447/PBB+long+logo.png?format=1500w' width="600"></div>""", unsafe_allow_html=True)
 
-    # --- Data Prep ---
-    df["MRC"] = pd.to_numeric(df["MRC"], errors="coerce")
+    st.markdown("<h1 style='color:#405C88;'>📊 Monthly Customer Performance Report</h1>", unsafe_allow_html=True)
+    st.markdown("""
+    This dashboard presents key metrics and insights into customer churn and growth. 
+    It analyzes the live JotForm Tally data, focusing on churn reasons, MRC impact, and new customer trends.
+    """)
+
     df["Submission Date"] = pd.to_datetime(df["Submission Date"], errors="coerce")
+    df = df.dropna(subset=["Submission Date"])
+    df["Month"] = df["Submission Date"].dt.to_period("M").astype(str)
 
-    # --- Filters ---
-    st.sidebar.header("🔍 Filters")
-    min_date, max_date = df["Submission Date"].min(), df["Submission Date"].max()
-    start_date, end_date = st.sidebar.date_input("Submission Date Range", [min_date, max_date])
-    filtered_data = df[
-        (df["Submission Date"] >= pd.Timestamp(start_date)) &
-        (df["Submission Date"] <= pd.Timestamp(end_date))
-    ]
+    # --- KPIs ---
+    total_customers = len(df)
+    disconnects = df[df["Status"] == "Disconnect"]
+    new_customers = df[df["Status"] == "NEW"]
+    churn_mrc = pd.to_numeric(disconnects["MRC"], errors="coerce").fillna(0).sum()
 
-    status_options = ["All"] + sorted(filtered_data["Status"].dropna().unique().tolist())
-    selected_status = st.sidebar.selectbox("Status", status_options)
-    if selected_status != "All":
-        filtered_data = filtered_data[filtered_data["Status"] == selected_status]
+    col1, col2, col3 = st.columns(3)
+    col1.metric("📈 Total Records", f"{total_customers}")
+    col2.metric("📉 Churned Customers", f"{len(disconnects)}")
+    col3.metric("💲 Churn MRC Impact", f"${churn_mrc:,.2f}")
 
-    reason_options = ["All"] + sorted(filtered_data["Reason"].dropna().unique().tolist())
-    selected_reason = st.sidebar.selectbox("Reason", reason_options)
-    if selected_reason != "All":
-        filtered_data = filtered_data[filtered_data["Reason"] == selected_reason]
+    st.markdown("---")
 
-    customer_search = st.sidebar.text_input("Search Customer Name")
-    if customer_search:
-        filtered_data = filtered_data[filtered_data["Customer Name"].str.contains(customer_search, case=False, na=False)]
 
-    # --- Total Summary ---
-    st.header("📌 Overall Totals")
-    total_summary = filtered_data.groupby("Status").agg(Count=("Status", "count")).reset_index()
-    total_mrc = filtered_data["MRC"].sum()
-    st.dataframe(total_summary)
-    st.metric("Total MRC", f"${total_mrc:,.2f}")
+    # --- Churn by Reason ---
+    st.header("Churn Analysis by Reason")
+    churn_summary = disconnects.groupby("Reason").agg(
+        Count=("Reason", "count"),
+        Total_MRC=("MRC", lambda x: pd.to_numeric(x, errors="coerce").fillna(0).sum())
+    ).reset_index()
+    churn_summary = churn_summary.sort_values(by="Count", ascending=False)
 
-    # --- Churn Summary ---
-    st.header("⚠️ Churn Summary by Reason")
-    churn_df = filtered_data[filtered_data["Status"] == "Disconnect"]
-    churn_summary = churn_df.groupby("Reason").agg(Count=("Reason", "count")).reset_index()
-    churn_total_mrc = churn_df["MRC"].sum()
-    st.dataframe(churn_summary)
-    st.metric("Churn Total MRC", f"${churn_total_mrc:,.2f}")
+    st.dataframe(churn_summary, use_container_width=True)
+
+    fig_reason = px.bar(
+        churn_summary,
+        x="Count",
+        y="Reason",
+        orientation="h",
+        title="Churn by Reason (Sorted)",
+        color="Count", color_continuous_scale=["#7CB342", "#405C88"],
+        height=500
+    )
+    st.plotly_chart(fig_reason, use_container_width=True)
 
     # --- Churn by Location ---
-    st.header("📍 Churn by Location")
-    loc_summary = churn_df.groupby("Location").agg(Count=("Location", "count")).sort_values(by="Count", ascending=False).reset_index()
-    st.dataframe(loc_summary)
+    st.header("Churn by Location (Top 20)")
+    loc_summary = disconnects.groupby("Location").size().reset_index(name="Count")
+    loc_summary = loc_summary.sort_values(by="Count", ascending=False).head(20)
 
-    # --- Visualizations ---
-    st.header("📊 Visualizations")
+    fig_location = px.bar(
+        loc_summary,
+        x="Location",
+        y="Count",
+        title="Churn by Location (Top 20)",
+        color="Count", color_continuous_scale=["#7CB342", "#405C88"]
+    )
+    st.plotly_chart(fig_location, use_container_width=True)
 
-    fig1, ax1 = plt.subplots()
-    ax1.barh(churn_summary["Reason"], churn_summary["Count"])
-    ax1.set_title("Churn Count by Reason")
-    st.pyplot(fig1)
+    # --- New Customers ---
+    st.header("New Customer Trends")
+    new_by_category = new_customers.groupby("Category").size().reset_index(name="Count").sort_values(by="Count", ascending=False)
+    new_by_location = new_customers.groupby("Location").size().reset_index(name="Count").sort_values(by="Count", ascending=False).head(20)
 
-    fig2, ax2 = plt.subplots()
-    ax2.bar(loc_summary["Location"], loc_summary["Count"])
-    ax2.set_title("Churn Count by Location")
-    ax2.tick_params(axis='x', rotation=90)
-    st.pyplot(fig2)
+    col4, col5 = st.columns(2)
 
-    fig3, ax3 = plt.subplots()
-    category_counts = filtered_data["Status"].value_counts()
-    category_counts.plot(kind="pie", autopct='%1.1f%%', ax=ax3)
-    ax3.set_ylabel("")
-    ax3.set_title("Customer Status Breakdown")
-    st.pyplot(fig3)
+    with col4:
+        fig_new_cat = px.bar(
+            new_by_category,
+            x="Category",
+            y="Count",
+            title="New Customers by Category",
+            color="Count", color_continuous_scale=["#7CB342", "#405C88"]
+        )
+        st.plotly_chart(fig_new_cat, use_container_width=True)
 
-    # --- Trend Chart ---
-    st.header("📈 Daily Activity Trend")
-    daily_trend = filtered_data.groupby(["Submission Date", "Status"]).size().unstack(fill_value=0)
-    st.line_chart(daily_trend)
+    with col5:
+        fig_new_loc = px.bar(
+            new_by_location,
+            x="Location",
+            y="Count",
+            title="New Customers by Location (Top 20)",
+            color="Count", color_continuous_scale=["#7CB342", "#405C88"]
+        )
+        st.plotly_chart(fig_new_loc, use_container_width=True)
 
-    # --- Status Breakdown: New, Converted, Previous ---
-    st.header("📊 Status Breakdown: New, Converted, Previous")
-    filtered_statuses = filtered_data[filtered_data["Status"].isin(["NEW", "Convert", "Previous"])]
-    status_counts = filtered_statuses["Status"].value_counts().reset_index()
-    status_counts.columns = ["Status", "Count"]
-
-    fig_status, ax_status = plt.subplots()
-    ax_status.bar(status_counts["Status"], status_counts["Count"])
-    ax_status.set_title("New vs Converted vs Previous Customers")
-    st.pyplot(fig_status)
-
-    if selected_status == "NEW":
-        st.header("📍 New Customers by Location (Filtered)")
-        new_by_location = filtered_data.groupby("Location").size().sort_values(ascending=False).reset_index(name="Count")
-
-        fig_new, ax_new = plt.subplots()
-        ax_new.bar(new_by_location["Location"], new_by_location["Count"])
-        ax_new.set_title("New Customer Count by Location")
-        ax_new.tick_params(axis='x', rotation=90)
-        st.pyplot(fig_new)
+    st.markdown("---")
+    st.caption("<span style='color:#405C88;'>Professional Dashboard generated with ❤️ for Board Review</span>", unsafe_allow_html=True)
