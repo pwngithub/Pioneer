@@ -5,11 +5,23 @@ API_KEY = "ba9013143bfda3a448297144c0527f7e"
 BASE_URL = "https://api.jotform.com"
 
 def get_forms():
-    url = f"{BASE_URL}/user/forms?apiKey={API_KEY}"
-    resp = requests.get(url)
-    resp.raise_for_status()
-    forms = resp.json().get("content", [])
-    return [(f["id"], f["title"]) for f in forms]
+    """List all forms (handles pagination)."""
+    forms = []
+    limit = 100
+    offset = 0
+
+    while True:
+        url = f"{BASE_URL}/user/forms?apiKey={API_KEY}&limit={limit}&offset={offset}"
+        resp = requests.get(url)
+        resp.raise_for_status()
+        page = resp.json().get("content", [])
+        forms.extend([(f["id"], f["title"]) for f in page])
+
+        if len(page) < limit:
+            break  # no more pages
+        offset += limit
+
+    return forms
 
 def get_submissions(form_id):
     url = f"{BASE_URL}/form/{form_id}/submissions?apiKey={API_KEY}"
