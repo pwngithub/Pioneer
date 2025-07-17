@@ -16,7 +16,18 @@ def run(df):
     df = df.dropna(subset=["Submission Date"])
     df["Month"] = df["Submission Date"].dt.to_period("M").astype(str)
 
+    
+    # --- Date Range Filter ---
+    st.sidebar.header("🔍 Filters")
+    min_date, max_date = df["Submission Date"].min(), df["Submission Date"].max()
+    start_date, end_date = st.sidebar.date_input("Submission Date Range", [min_date, max_date])
+    df = df[
+        (df["Submission Date"] >= pd.Timestamp(start_date)) &
+        (df["Submission Date"] <= pd.Timestamp(end_date))
+    ]
+
     # --- KPIs ---
+    
     total_customers = len(df)
     disconnects = df[df["Status"] == "Disconnect"]
     new_customers = df[df["Status"] == "NEW"]
