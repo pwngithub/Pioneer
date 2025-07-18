@@ -73,7 +73,7 @@ def run_construction_dashboard():
                 continue
         return df
 
-    lash_df = df[df["whatDid"].str.contains("Lashed Fiber", case=False, na=False)]
+    lash_df = df[df["whatDid"].str.contains("Lashed Fiber ($0.02)", case=False, na=False)]
     pull_df = df[df["whatDid"].str.contains("Pulled Fiber", case=False, na=False)]
     strand_df = df[df["whatDid"].str.contains("Strand", case=False, na=False)]
 
@@ -89,37 +89,6 @@ def run_construction_dashboard():
     col1.metric("Fiber Lash Footage", f"{lash_total:,}")
     col2.metric("Fiber Pull Footage", f"{pull_total:,}")
     col3.metric("Strand Footage", f"{strand_total:,}")
-
-    st.markdown("---")
-    st.header("Footage by Technician")
-
-    def plot_tech_chart(df, title):
-        tech_footage = df.groupby("whoFilled")["Footage"].sum()
-        if not tech_footage.empty:
-            fig, ax = plt.subplots()
-            tech_footage.plot(kind="bar", ax=ax)
-            ax.set_ylabel("Footage")
-            ax.set_xlabel("Technician")
-            ax.set_title(title)
-            st.pyplot(fig)
-
-    plot_tech_chart(lash_df, "Fiber Lash Footage per Technician")
-    plot_tech_chart(pull_df, "Fiber Pull Footage per Technician")
-    plot_tech_chart(strand_df, "Strand Footage per Technician")
-
-    st.markdown("---")
-    st.header("Work Summary")
-
-    for (date, project), group in df.groupby([df["Submission Date"].dt.date, "projectOr"]):
-        st.markdown(f"📅 **{date}** — 📁 **{project if pd.notna(project) else 'N/A'}**")
-        for _, row in group.iterrows():
-            employees = [row.get(col) for col in ["employee", "employee17", "employee19", "employee20", "employee21", "employee22"]]
-            employees = [e for e in employees if pd.notna(e)]
-            employees_str = ", ".join(employees) if employees else "Unknown"
-            truck = row.get("whatTruck", "Unknown Truck")
-            activity = row.get("whatDid", "Unknown Activity")
-            fiber = row.get("fiber", "Unknown Fiber")
-            st.markdown(f"- {employees_str} used {truck} to perform **{activity}** on **{fiber}**")
 
 if __name__ == "__main__":
     run_construction_dashboard()
