@@ -54,7 +54,7 @@ def run_dashboard():
 
     start_date, end_date = st.date_input(
         "📅 Select date range",
-        value=(min_date, max_date),
+        value=(max_date - timedelta(days=6), max_date),
         min_value=min_date,
         max_value=max_date
     )
