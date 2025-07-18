@@ -34,7 +34,24 @@ def run_construction_dashboard():
     df = load_from_jotform()
     df.columns = df.columns.str.strip()
 
-    techs = df["Who filled this out?"].dropna().unique()
+    st.subheader("🧾 Current DataFrame Columns")
+    st.json(list(df.columns))
+
+    # Use exact or fallback field names
+    tech_field = None
+    for col in df.columns:
+        if col.lower() == "who filled this out?":
+            tech_field = col
+            break
+        if col.lower() == "whofilled":
+            tech_field = col
+            break
+
+    if tech_field is None:
+        st.error("❌ Could not find 'Who filled this out?' or 'whoFilled' column in data.")
+        return
+
+    techs = df[tech_field].dropna().unique()
     projects = df["Project or labor?"].dropna().unique()
     trucks = df["What Truck?"].dropna().unique()
 
@@ -44,7 +61,7 @@ def run_construction_dashboard():
 
     filtered_df = df.copy()
     if selected_tech != "All":
-        filtered_df = filtered_df[filtered_df["Who filled this out?"] == selected_tech]
+        filtered_df = filtered_df[filtered_df[tech_field] == selected_tech]
     if selected_project != "All":
         filtered_df = filtered_df[filtered_df["Project or labor?"] == selected_project]
     if selected_truck != "All":
@@ -52,62 +69,6 @@ def run_construction_dashboard():
 
     st.subheader("Filtered Data")
     st.dataframe(filtered_df)
-
-    def extract_footage_by_activity(row):
-        activity = str(row.get("What did you do.", "")).lower()
-        source_col = None
-        if "lashed fiber" in activity:
-            source_col = "Fiber"
-        elif "pulled fiber" in activity:
-            source_col = "Fiber pull Info."
-        elif "strand" in activity:
-            source_col = "Stand info"
-
-        if source_col and source_col in row:
-            text = str(row.get(source_col, ""))
-            match = re.search(r'(\d+[,.]?\d*)', text)
-            if match:
-                try:
-                    return float(match.group(1).replace(",", ""))
-                except:
-                    return 0
-        return 0
-
-    def assign_footage(data):
-        data = data.copy()
-        data["Footage"] = data.apply(extract_footage_by_activity, axis=1)
-        return data
-
-    lash_df = assign_footage(filtered_df[filtered_df["What did you do."].str.contains("Lashed Fiber", na=False)])
-    pull_df = assign_footage(filtered_df[filtered_df["What did you do."].str.contains("Pulled Fiber", na=False)])
-    strand_df = assign_footage(filtered_df[filtered_df["What did you do."].str.contains("Strand", na=False)])
-
-    lash_total = lash_df["Footage"].sum()
-    pull_total = pull_df["Footage"].sum()
-    strand_total = strand_df["Footage"].sum()
-
-    st.subheader("Summary")
-    st.write({
-        "Fiber Lash Footage": lash_total,
-        "Fiber Pull Footage": pull_total,
-        "Strand Footage": strand_total
-    })
-
-    st.subheader("Footage Bar Charts per Technician")
-
-    def plot_footage(data, label):
-        tech_footage = data.groupby("Who filled this out?")["Footage"].sum()
-        if not tech_footage.empty:
-            st.write(f"### {label}")
-            fig, ax = plt.subplots()
-            tech_footage.plot(kind="bar", ax=ax)
-            ax.set_ylabel("Footage")
-            ax.set_xlabel("Technician")
-            st.pyplot(fig)
-
-    plot_footage(lash_df, "Fiber Lash Footage")
-    plot_footage(pull_df, "Fiber Pull Footage")
-    plot_footage(strand_df, "Strand Footage")
 
 if __name__ == "__main__":
     run_construction_dashboard()
