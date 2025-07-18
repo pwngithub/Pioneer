@@ -1,11 +1,8 @@
 
 def run_dashboard():
-    import os
     import pandas as pd
     import streamlit as st
     import requests
-    from datetime import datetime
-    import plotly.express as px
 
     def load_from_jotform():
         api_key = "22179825a79dba61013e4fc3b9d30fa4"
@@ -35,7 +32,7 @@ def run_dashboard():
 
     st.markdown("<h1 style='color:#405C88;'>📊 Monthly Customer Performance Report</h1>", unsafe_allow_html=True)
     st.markdown("""
-    This dashboard pulls the latest Talley form submissions via the Jotform API and presents key metrics and insights.
+    This dashboard pulls the latest Talley form submissions via the Jotform API and displays the available column names.
     """)
 
     df = load_from_jotform()
@@ -44,7 +41,7 @@ def run_dashboard():
     st.write("Below are the raw column names fetched from the Jotform API:")
     st.json(list(df.columns))
 
-    st.info("✅ Please note down the actual field names above and let me know which corresponds to 'Status', 'Category', 'Location', etc.")
+    st.info("✅ Please copy the list above and paste it here so I can help you map them to friendly names like 'Status', 'Category', etc.")
 
     st.markdown("---")
     st.caption("<span style='color:#405C88;'>Professional Dashboard generated with ❤️ for Board Review</span>", unsafe_allow_html=True)
