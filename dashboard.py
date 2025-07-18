@@ -17,11 +17,14 @@ def run_dashboard():
         
         submissions = []
         for item in data["content"]:
-            answers = item["answers"]
-            submission_date = item["created_at"]
+            answers = item.get("answers", {})
+            submission_date = item.get("created_at", None)
             record = {"Submission Date": submission_date}
             for ans in answers.values():
-                record[ans["name"]] = ans["answer"]
+                name = ans.get("name")
+                answer = ans.get("answer")
+                if name and answer is not None:
+                    record[name] = answer
             submissions.append(record)
         
         df = pd.DataFrame(submissions)
