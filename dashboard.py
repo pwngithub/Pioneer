@@ -3,44 +3,39 @@ def run_dashboard():
     import os
     import pandas as pd
     import streamlit as st
+    import requests
     from datetime import datetime
     import plotly.express as px
+
+    def load_from_jotform():
+        api_key = "22179825a79dba61013e4fc3b9d30fa4"
+        form_id = "240073839937062"
+        url = f"https://api.jotform.com/form/{form_id}/submissions?apiKey={api_key}"
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        
+        submissions = []
+        for item in data["content"]:
+            answers = item["answers"]
+            submission_date = item["created_at"]
+            record = {"Submission Date": submission_date}
+            for ans in answers.values():
+                record[ans["name"]] = ans["answer"]
+            submissions.append(record)
+        
+        df = pd.DataFrame(submissions)
+        return df
 
     st.set_page_config(page_title="Customer Activity Report", layout="wide")
     st.markdown("""<div style="text-align:center;"><img src='https://images.squarespace-cdn.com/content/v1/651eb4433b13e72c1034f375/369c5df0-5363-4827-b041-1add0367f447/PBB+long+logo.png?format=1500w' width="600"></div>""", unsafe_allow_html=True)
 
     st.markdown("<h1 style='color:#405C88;'>📊 Monthly Customer Performance Report</h1>", unsafe_allow_html=True)
     st.markdown("""
-    This dashboard presents key metrics and insights into customer churn and growth. 
-    It analyzes one uploaded file at a time, focusing on churn reasons, MRC impact, and new customer trends.
+    This dashboard pulls the latest Talley form submissions via the Jotform API and presents key metrics and insights.
     """)
 
-    UPLOAD_DIR = "uploaded_data"
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-
-    if "current_file" not in st.session_state:
-        st.session_state.current_file = None
-
-    uploaded_file = st.sidebar.file_uploader("Upload Excel File", type=["xlsx"])
-
-    if uploaded_file and not st.session_state.current_file:
-        tmp_path = os.path.join(UPLOAD_DIR, f"tmp_{uploaded_file.name}")
-        with open(tmp_path, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-        st.session_state.current_file = tmp_path
-
-    if st.sidebar.button("🚫 Clear Current File"):
-        st.session_state.current_file = None
-
-    if not st.session_state.current_file:
-        st.info("Please upload a file to begin analysis.")
-        st.stop()
-
-    latest_path = st.session_state.current_file
-    st.subheader(f"📂 Analyzing: `{os.path.basename(latest_path)}`")
-
-    xls = pd.ExcelFile(latest_path)
-    df = xls.parse("Sheet1")
+    df = load_from_jotform()
 
     df["Submission Date"] = pd.to_datetime(df["Submission Date"], errors="coerce")
     df = df.dropna(subset=["Submission Date"])
@@ -49,12 +44,12 @@ def run_dashboard():
     total_customers = len(df)
     disconnects = df[df["Status"] == "Disconnect"]
     new_customers = df[df["Status"] == "NEW"]
-    churn_mrc = pd.to_numeric(disconnects["MRC"], errors="coerce").fillna(0).sum()
+    churn_mrc = pd.to_numeric(df["MRC"], errors="coerce").fillna(0).sum()
 
     col1, col2, col3 = st.columns(3)
     col1.metric("📈 Total Records", f"{total_customers}")
     col2.metric("📉 Churned Customers", f"{len(disconnects)}")
-    col3.metric("💲 Churn MRC Impact", f"${churn_mrc:,.2f}")
+    col3.metric("💲 Total MRC", f"${churn_mrc:,.2f}")
 
     st.markdown("---")
 
