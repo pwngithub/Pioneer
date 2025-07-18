@@ -6,7 +6,7 @@ def run_construction_dashboard():
     import json
     import requests
 
-    st.title("Construction Daily Workflow Dashboard — With Date Filter")
+    st.title("Construction Daily Workflow Dashboard")
 
     def load_from_jotform():
         api_key = "22179825a79dba61013e4fc3b9d30fa4"
@@ -47,32 +47,73 @@ def run_construction_dashboard():
         max_value=max_date
     )
 
-    mask = (df["Submission Date"].dt.date >= start_date) & (df["Submission Date"].dt.date <= end_date)
-    df = df.loc[mask]
+    df = df[(df["Submission Date"].dt.date >= start_date) & (df["Submission Date"].dt.date <= end_date)]
 
-    def extract_total_footage_from_json_column(col):
-        total = 0
-        for val in col.dropna():
+    # Helper to extract footage totals from JSON column
+    def extract_footage(df, column):
+        df = df.copy()
+        df["Footage"] = 0
+        for idx, val in df[column].dropna().items():
             try:
                 items = json.loads(val)
                 for item in items:
                     footage_str = item.get("Footage", "0").replace(",", "").strip()
                     if footage_str.isdigit():
-                        total += int(footage_str)
+                        df.at[idx, "Footage"] += int(footage_str)
             except:
                 continue
-        return total
+        return df
 
-    lash_total = 0  # still no confirmed source for lash
-    pull_total = extract_total_footage_from_json_column(df["fiberPull"])
-    strand_total = extract_total_footage_from_json_column(df["standInfo"])
+    # Filter rows by activity type
+    lash_df = df[df["whatDid"].str.contains("Lashed Fiber", case=False, na=False)]
+    pull_df = df[df["whatDid"].str.contains("Pulled Fiber", case=False, na=False)]
+    strand_df = df[df["whatDid"].str.contains("Strand", case=False, na=False)]
 
-    st.subheader("Summary")
-    st.write({
-        "Fiber Lash Footage": lash_total,
-        "Fiber Pull Footage": pull_total,
-        "Strand Footage": strand_total
-    })
+    lash_df = extract_footage(lash_df, "fiber")
+    pull_df = extract_footage(pull_df, "fiberPull")
+    strand_df = extract_footage(strand_df, "standInfo")
+
+    lash_total = lash_df["Footage"].sum()
+    pull_total = pull_df["Footage"].sum()
+    strand_total = strand_df["Footage"].sum()
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Fiber Lash Footage", f"{lash_total:,}")
+    col2.metric("Fiber Pull Footage", f"{pull_total:,}")
+    col3.metric("Strand Footage", f"{strand_total:,}")
+
+    st.markdown("---")
+    st.header("Footage by Technician")
+
+    def plot_tech_chart(df, title):
+        tech_footage = df.groupby("whoFilled")["Footage"].sum()
+        if not tech_footage.empty:
+            fig, ax = plt.subplots()
+            tech_footage.plot(kind="bar", ax=ax)
+            ax.set_ylabel("Footage")
+            ax.set_xlabel("Technician")
+            ax.set_title(title)
+            st.pyplot(fig)
+
+    plot_tech_chart(lash_df, "Fiber Lash Footage per Technician")
+    plot_tech_chart(pull_df, "Fiber Pull Footage per Technician")
+    plot_tech_chart(strand_df, "Strand Footage per Technician")
+
+    st.markdown("---")
+    st.header("Work Summary")
+
+    summary_rows = []
+    for (date, project), group in df.groupby([df["Submission Date"].dt.date, "projectOr"]):
+        text = f"📅 **{date}** — 📁 **{project if pd.notna(project) else 'N/A'}**"
+        st.markdown(text)
+        for _, row in group.iterrows():
+            employees = [row.get(col) for col in ["employee", "employee17", "employee19", "employee20", "employee21", "employee22"]]
+            employees = [e for e in employees if pd.notna(e)]
+            employees_str = ", ".join(employees) if employees else "Unknown"
+            truck = row.get("whatTruck", "Unknown Truck")
+            activity = row.get("whatDid", "Unknown Activity")
+            fiber = row.get("fiber", "Unknown Fiber")
+            st.markdown(f"- {employees_str} used {truck} to perform **{activity}** on **{fiber}**")
 
 if __name__ == "__main__":
     run_construction_dashboard()
