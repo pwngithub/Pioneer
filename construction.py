@@ -49,12 +49,10 @@ def run_construction_dashboard():
         "employee22": "Employee5"
     }, inplace=True)
 
-    st.subheader("🧾 Sample of Footage-related Fields")
+    st.subheader("🧾 Current DataFrame Columns")
+    st.json(list(df.columns))
 
-    st.write("✅ Here is a sample of the footage-related fields. Please inspect the content and tell me how footage numbers appear.")
-    st.dataframe(df[["What did you do.", "Fiber Lash Info.", "Fiber pull Info.", "Stand info"]].head(20))
-
-    st.info("✅ Please copy a few rows of the above columns and paste them here so I can adjust the extraction logic accordingly.")
+    st.info("✅ Please copy the list above and paste it here so we can adjust the column selection properly.")
 
 if __name__ == "__main__":
     run_construction_dashboard()
