@@ -4,7 +4,7 @@ def run_construction_dashboard():
     import pandas as pd
     import requests
 
-    st.title("Construction Dashboard — Inspecting Lashed Fiber Rows")
+    st.title("Construction Dashboard — Inspecting Column Names")
 
     def load_from_jotform():
         api_key = "22179825a79dba61013e4fc3b9d30fa4"
@@ -32,27 +32,10 @@ def run_construction_dashboard():
     df = load_from_jotform()
     df.columns = df.columns.str.strip()
 
-    df["Submission Date"] = pd.to_datetime(df["Submission Date"], errors="coerce")
-    df = df.dropna(subset=["Submission Date"])
+    st.subheader("🧾 All Column Names in API Data")
+    st.json(list(df.columns))
 
-    min_date = df["Submission Date"].min().date()
-    max_date = df["Submission Date"].max().date()
-
-    start_date, end_date = st.date_input(
-        "📅 Select date range",
-        value=(min_date, max_date),
-        min_value=min_date,
-        max_value=max_date
-    )
-
-    df = df[(df["Submission Date"].dt.date >= start_date) & (df["Submission Date"].dt.date <= end_date)]
-
-    lashed_rows = df[df["whatDid"].str.contains("Lashed", case=False, na=False)][["Submission Date", "whoFilled", "whatDid", "fiber"]]
-
-    st.subheader("🔍 Rows where `whatDid` contains 'Lashed'")
-    st.dataframe(lashed_rows)
-
-    st.info("📩 Please copy a few example rows from above (especially `whatDid` and `fiber` columns) and paste them here so I can fix the logic.")
+    st.info("📩 Please copy the exact name of the column that contains the Fiber Lashed Info here so I can fix the logic.")
 
 if __name__ == "__main__":
     run_construction_dashboard()
