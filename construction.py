@@ -2,11 +2,9 @@
 def run_construction_dashboard():
     import streamlit as st
     import pandas as pd
-    import matplotlib.pyplot as plt
-    import re
     import requests
 
-    st.title("Construction Daily Workflow Dashboard")
+    st.title("Construction Daily Workflow Dashboard — Inspecting API Values")
 
     def load_from_jotform():
         api_key = "22179825a79dba61013e4fc3b9d30fa4"
@@ -34,24 +32,18 @@ def run_construction_dashboard():
     df = load_from_jotform()
     df.columns = df.columns.str.strip()
 
-    techs = df["whoFilled"].dropna().unique()
-    projects = df["projectOr"].dropna().unique()
-    trucks = df["whatTruck"].dropna().unique()
+    st.subheader("🧾 Raw API Values of Footage-Related Fields")
+    st.write("✅ Below are the first 20 rows of the `Fiber`, `Fiber pull Info.`, and `Stand info` fields as returned by the Jotform API:")
+    st.dataframe(df[[
+        "Submission Date",
+        "whoFilled",
+        "whatDid",
+        "Fiber",
+        "Fiber pull Info.",
+        "Stand info"
+    ]].head(20))
 
-    selected_tech = st.selectbox("Filter by Technician", ["All"] + list(techs))
-    selected_project = st.selectbox("Filter by Project/Labor", ["All"] + list(projects))
-    selected_truck = st.selectbox("Filter by Truck", ["All"] + list(trucks))
-
-    filtered_df = df.copy()
-    if selected_tech != "All":
-        filtered_df = filtered_df[filtered_df["whoFilled"] == selected_tech]
-    if selected_project != "All":
-        filtered_df = filtered_df[filtered_df["projectOr"] == selected_project]
-    if selected_truck != "All":
-        filtered_df = filtered_df[filtered_df["whatTruck"] == selected_truck]
-
-    st.subheader("Filtered Data")
-    st.dataframe(filtered_df)
+    st.info("📩 Please copy and paste a few example values from the above into ChatGPT so I can adjust the parsing logic to match.")
 
 if __name__ == "__main__":
     run_construction_dashboard()
