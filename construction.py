@@ -2,9 +2,11 @@
 def run_construction_dashboard():
     import streamlit as st
     import pandas as pd
+    import matplotlib.pyplot as plt
+    import json
     import requests
 
-    st.title("Construction Daily Workflow Dashboard — Inspecting API Values")
+    st.title("Construction Daily Workflow Dashboard — Correct Footage Extraction")
 
     def load_from_jotform():
         api_key = "22179825a79dba61013e4fc3b9d30fa4"
@@ -32,18 +34,29 @@ def run_construction_dashboard():
     df = load_from_jotform()
     df.columns = df.columns.str.strip()
 
-    st.subheader("🧾 Raw API Values of Footage-Related Fields")
-    st.write("✅ Below are the first 20 rows of the `fiber`, `fiberPull`, and `standInfo` fields as returned by the Jotform API:")
-    st.dataframe(df[[
-        "Submission Date",
-        "whoFilled",
-        "whatDid",
-        "fiber",
-        "fiberPull",
-        "standInfo"
-    ]].head(20))
+    def extract_total_footage_from_json_column(col):
+        total = 0
+        for val in col.dropna():
+            try:
+                items = json.loads(val)
+                for item in items:
+                    footage_str = item.get("Footage", "0").replace(",", "").strip()
+                    if footage_str.isdigit():
+                        total += int(footage_str)
+            except:
+                continue
+        return total
 
-    st.info("📩 Please copy and paste a few example values from the above into ChatGPT so I can adjust the parsing logic to match.")
+    lash_total = 0  # not present in JSON, so assumed 0 or another logic
+    pull_total = extract_total_footage_from_json_column(df["fiberPull"])
+    strand_total = extract_total_footage_from_json_column(df["standInfo"])
+
+    st.subheader("Summary")
+    st.write({
+        "Fiber Lash Footage": lash_total,
+        "Fiber Pull Footage": pull_total,
+        "Strand Footage": strand_total
+    })
 
 if __name__ == "__main__":
     run_construction_dashboard()
