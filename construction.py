@@ -34,26 +34,9 @@ def run_construction_dashboard():
     df = load_from_jotform()
     df.columns = df.columns.str.strip()
 
-    st.subheader("🧾 Current DataFrame Columns")
-    st.json(list(df.columns))
-
-    # Use exact or fallback field names
-    tech_field = None
-    for col in df.columns:
-        if col.lower() == "who filled this out?":
-            tech_field = col
-            break
-        if col.lower() == "whofilled":
-            tech_field = col
-            break
-
-    if tech_field is None:
-        st.error("❌ Could not find 'Who filled this out?' or 'whoFilled' column in data.")
-        return
-
-    techs = df[tech_field].dropna().unique()
-    projects = df["Project or labor?"].dropna().unique()
-    trucks = df["What Truck?"].dropna().unique()
+    techs = df["whoFilled"].dropna().unique()
+    projects = df["projectOr"].dropna().unique()
+    trucks = df["whatTruck"].dropna().unique()
 
     selected_tech = st.selectbox("Filter by Technician", ["All"] + list(techs))
     selected_project = st.selectbox("Filter by Project/Labor", ["All"] + list(projects))
@@ -61,11 +44,11 @@ def run_construction_dashboard():
 
     filtered_df = df.copy()
     if selected_tech != "All":
-        filtered_df = filtered_df[filtered_df[tech_field] == selected_tech]
+        filtered_df = filtered_df[filtered_df["whoFilled"] == selected_tech]
     if selected_project != "All":
-        filtered_df = filtered_df[filtered_df["Project or labor?"] == selected_project]
+        filtered_df = filtered_df[filtered_df["projectOr"] == selected_project]
     if selected_truck != "All":
-        filtered_df = filtered_df[filtered_df["What Truck?"] == selected_truck]
+        filtered_df = filtered_df[filtered_df["whatTruck"] == selected_truck]
 
     st.subheader("Filtered Data")
     st.dataframe(filtered_df)
