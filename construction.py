@@ -6,7 +6,7 @@ def run_construction_dashboard():
     import json
     import requests
 
-    st.title("Construction Daily Workflow Dashboard — Correct Footage Extraction")
+    st.title("Construction Daily Workflow Dashboard — With Date Filter")
 
     def load_from_jotform():
         api_key = "22179825a79dba61013e4fc3b9d30fa4"
@@ -34,6 +34,22 @@ def run_construction_dashboard():
     df = load_from_jotform()
     df.columns = df.columns.str.strip()
 
+    df["Submission Date"] = pd.to_datetime(df["Submission Date"], errors="coerce")
+    df = df.dropna(subset=["Submission Date"])
+
+    min_date = df["Submission Date"].min().date()
+    max_date = df["Submission Date"].max().date()
+
+    start_date, end_date = st.date_input(
+        "📅 Select date range",
+        value=(min_date, max_date),
+        min_value=min_date,
+        max_value=max_date
+    )
+
+    mask = (df["Submission Date"].dt.date >= start_date) & (df["Submission Date"].dt.date <= end_date)
+    df = df.loc[mask]
+
     def extract_total_footage_from_json_column(col):
         total = 0
         for val in col.dropna():
@@ -47,7 +63,7 @@ def run_construction_dashboard():
                 continue
         return total
 
-    lash_total = 0  # not present in JSON, so assumed 0 or another logic
+    lash_total = 0  # still no confirmed source for lash
     pull_total = extract_total_footage_from_json_column(df["fiberPull"])
     strand_total = extract_total_footage_from_json_column(df["standInfo"])
 
