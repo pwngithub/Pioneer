@@ -58,6 +58,20 @@ def run_dashboard():
     df = df.dropna(subset=["Submission Date"])
     df["Month"] = df["Submission Date"].dt.to_period("M").astype(str)
 
+    # Add date filter
+    min_date = df["Submission Date"].min().date()
+    max_date = df["Submission Date"].max().date()
+
+    start_date, end_date = st.date_input(
+        "📅 Select date range",
+        value=(min_date, max_date),
+        min_value=min_date,
+        max_value=max_date
+    )
+
+    mask = (df["Submission Date"].dt.date >= start_date) & (df["Submission Date"].dt.date <= end_date)
+    df = df.loc[mask]
+
     total_customers = len(df)
     disconnects = df[df["Status"] == "Disconnect"]
     new_customers = df[df["Status"] == "NEW"]
