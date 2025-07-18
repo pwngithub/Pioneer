@@ -94,5 +94,48 @@ def run_dashboard():
     )
     st.plotly_chart(fig_reason, use_container_width=True)
 
+    st.markdown("---")
+
+    st.header("Churn by Location (Top 20)")
+    loc_summary = disconnects.groupby("Location").size().reset_index(name="Count")
+    loc_summary = loc_summary.sort_values(by="Count", ascending=False).head(20)
+
+    fig_location = px.bar(
+        loc_summary,
+        x="Location",
+        y="Count",
+        title="Churn by Location (Top 20)",
+        color="Count", color_continuous_scale=["#7CB342", "#405C88"]
+    )
+    st.plotly_chart(fig_location, use_container_width=True)
+
+    st.markdown("---")
+
+    st.header("New Customer Trends")
+    new_by_category = new_customers.groupby("Category").size().reset_index(name="Count").sort_values(by="Count", ascending=False)
+    new_by_location = new_customers.groupby("Location").size().reset_index(name="Count").sort_values(by="Count", ascending=False).head(20)
+
+    col4, col5 = st.columns(2)
+
+    with col4:
+        fig_new_cat = px.bar(
+            new_by_category,
+            x="Category",
+            y="Count",
+            title="New Customers by Category",
+            color="Count", color_continuous_scale=["#7CB342", "#405C88"]
+        )
+        st.plotly_chart(fig_new_cat, use_container_width=True)
+
+    with col5:
+        fig_new_loc = px.bar(
+            new_by_location,
+            x="Location",
+            y="Count",
+            title="New Customers by Location (Top 20)",
+            color="Count", color_continuous_scale=["#7CB342", "#405C88"]
+        )
+        st.plotly_chart(fig_new_loc, use_container_width=True)
+
 if __name__ == "__main__":
     run_dashboard()
