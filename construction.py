@@ -33,14 +33,14 @@ def run_construction_dashboard():
     df.columns = df.columns.str.strip()
 
     st.subheader("🧾 Raw API Values of Footage-Related Fields")
-    st.write("✅ Below are the first 20 rows of the `Fiber`, `Fiber pull Info.`, and `Stand info` fields as returned by the Jotform API:")
+    st.write("✅ Below are the first 20 rows of the `fiber`, `fiberPull`, and `standInfo` fields as returned by the Jotform API:")
     st.dataframe(df[[
         "Submission Date",
         "whoFilled",
         "whatDid",
-        "Fiber",
-        "Fiber pull Info.",
-        "Stand info"
+        "fiber",
+        "fiberPull",
+        "standInfo"
     ]].head(20))
 
     st.info("📩 Please copy and paste a few example values from the above into ChatGPT so I can adjust the parsing logic to match.")
