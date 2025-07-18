@@ -2,12 +2,9 @@
 def run_construction_dashboard():
     import streamlit as st
     import pandas as pd
-    import matplotlib.pyplot as plt
-    import json
-    import re
     import requests
 
-    st.title("Construction Daily Workflow Dashboard")
+    st.title("Construction Dashboard — Inspecting Lashed Fiber Rows")
 
     def load_from_jotform():
         api_key = "22179825a79dba61013e4fc3b9d30fa4"
@@ -50,45 +47,12 @@ def run_construction_dashboard():
 
     df = df[(df["Submission Date"].dt.date >= start_date) & (df["Submission Date"].dt.date <= end_date)]
 
-    def extract_lash_footage(df):
-        df = df.copy()
-        df["Footage"] = 0
-        for idx, val in df["fiber"].dropna().items():
-            match = re.search(r"Footage[:\s]+(\d+)", val)
-            if match:
-                df.at[idx, "Footage"] = int(match.group(1))
-        return df
+    lashed_rows = df[df["whatDid"].str.contains("Lashed", case=False, na=False)][["Submission Date", "whoFilled", "whatDid", "fiber"]]
 
-    def extract_json_footage(df, column):
-        df = df.copy()
-        df["Footage"] = 0
-        for idx, val in df[column].dropna().items():
-            try:
-                items = json.loads(val)
-                for item in items:
-                    footage_str = item.get("Footage", "0").replace(",", "").strip()
-                    if footage_str.isdigit():
-                        df.at[idx, "Footage"] += int(footage_str)
-            except:
-                continue
-        return df
+    st.subheader("🔍 Rows where `whatDid` contains 'Lashed'")
+    st.dataframe(lashed_rows)
 
-    lash_df = df[df["whatDid"].str.contains("Lashed Fiber ($0.02)", case=False, na=False)]
-    pull_df = df[df["whatDid"].str.contains("Pulled Fiber", case=False, na=False)]
-    strand_df = df[df["whatDid"].str.contains("Strand", case=False, na=False)]
-
-    lash_df = extract_lash_footage(lash_df)
-    pull_df = extract_json_footage(pull_df, "fiberPull")
-    strand_df = extract_json_footage(strand_df, "standInfo")
-
-    lash_total = lash_df["Footage"].sum()
-    pull_total = pull_df["Footage"].sum()
-    strand_total = strand_df["Footage"].sum()
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Fiber Lash Footage", f"{lash_total:,}")
-    col2.metric("Fiber Pull Footage", f"{pull_total:,}")
-    col3.metric("Strand Footage", f"{strand_total:,}")
+    st.info("📩 Please copy a few example rows from above (especially `whatDid` and `fiber` columns) and paste them here so I can fix the logic.")
 
 if __name__ == "__main__":
     run_construction_dashboard()
