@@ -1,7 +1,6 @@
 
 import streamlit as st
 
-# Sidebar Navigation
 page = st.sidebar.selectbox("📊 Select Report", ["Home", "Talley"])
 
 if page == "Home":
@@ -11,5 +10,5 @@ if page == "Home":
     """)
 
 elif page == "Talley":
-    # Run the Talley dashboard
-    exec(open("dashboard.py").read())
+    import dashboard
+    dashboard.run_dashboard()
