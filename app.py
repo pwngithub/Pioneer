@@ -5,9 +5,7 @@ page = st.sidebar.selectbox("📊 Select Report", ["Home", "Talley", "Constructi
 
 if page == "Home":
     st.title("🏠 Welcome to Pioneer Dashboard")
-    st.markdown("""
-    Use the sidebar to select a specific report.
-    """)
+    st.markdown("Use the sidebar to select a specific report.")
 
 elif page == "Talley":
     import dashboard

@@ -32,10 +32,10 @@ def run_construction_dashboard():
     df = load_from_jotform()
     df.columns = df.columns.str.strip()
 
-    st.subheader("🧾 All Column Names in API Data")
+    st.subheader("🧾 All Column Names from Jotform API")
     st.json(list(df.columns))
 
-    st.info("📩 Please copy the exact name of the column that contains the Fiber Lashed Info here so I can fix the logic.")
-
+    st.info("📩 Copy the exact column name that contains Fiber Lash Info so I can complete the KPI logic.")
+    
 if __name__ == "__main__":
     run_construction_dashboard()
