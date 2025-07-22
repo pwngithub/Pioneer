@@ -2,11 +2,11 @@
 def run_construction_dashboard():
     import streamlit as st
     import pandas as pd
-    import matplotlib.pyplot as plt
+    import plotly.express as px
     import json
     import requests
 
-    st.title("Construction Daily Workflow Dashboard")
+    st.title("Construction Dashboard")
 
     def load_from_jotform():
         api_key = "22179825a79dba61013e4fc3b9d30fa4"
@@ -33,7 +33,6 @@ def run_construction_dashboard():
 
     df = load_from_jotform()
     df.columns = df.columns.str.strip()
-
     df["Submission Date"] = pd.to_datetime(df["Submission Date"], errors="coerce")
     df = df.dropna(subset=["Submission Date"])
 
@@ -49,13 +48,11 @@ def run_construction_dashboard():
 
     df = df[(df["Submission Date"].dt.date >= start_date) & (df["Submission Date"].dt.date <= end_date)]
 
-    # Filters: Projects & Technicians
     selected_projects = st.multiselect(
         "Filter by Project(s)",
         options=df["projectOr"].dropna().unique(),
         default=df["projectOr"].dropna().unique()
     )
-
     selected_techs = st.multiselect(
         "Filter by Technician(s)",
         options=df["whoFilled"].dropna().unique(),
@@ -64,7 +61,7 @@ def run_construction_dashboard():
 
     df = df[df["projectOr"].isin(selected_projects) & df["whoFilled"].isin(selected_techs)]
 
-    def extract_json_footage_from_column(df_partial, column, new_col):
+    def extract_json_footage(df_partial, column, new_col):
         df_out = df_partial.copy()
         df_out[new_col] = 0
         for idx, val in df_out[column].dropna().items():
@@ -78,54 +75,61 @@ def run_construction_dashboard():
                 continue
         return df_out
 
-    lash_df = extract_json_footage_from_column(df[df["typeA45"].notna()], "typeA45", "LashFootage")
-    pull_df = extract_json_footage_from_column(df[df["fiberPull"].notna()], "fiberPull", "PullFootage")
-    strand_df = extract_json_footage_from_column(df[df["standInfo"].notna()], "standInfo", "StrandFootage")
+    lash_df = extract_json_footage(df[df["typeA45"].notna()], "typeA45", "LashFootage")
+    pull_df = extract_json_footage(df[df["fiberPull"].notna()], "fiberPull", "PullFootage")
+    strand_df = extract_json_footage(df[df["standInfo"].notna()], "standInfo", "StrandFootage")
 
     lash_total = lash_df["LashFootage"].sum()
     pull_total = pull_df["PullFootage"].sum()
     strand_total = strand_df["StrandFootage"].sum()
+    work_hours = pd.to_numeric(df["workHours"], errors="coerce").fillna(0).mean()
+    total_submissions = len(df)
+    total_projects = df["projectOr"].nunique()
 
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Fiber Lash Footage", f"{lash_total:,}")
-    col2.metric("Fiber Pull Footage", f"{pull_total:,}")
+    col1, col2, col3, col4, col5 = st.columns(5)
+    col1.metric("Lash Footage", f"{lash_total:,}")
+    col2.metric("Pull Footage", f"{pull_total:,}")
     col3.metric("Strand Footage", f"{strand_total:,}")
+    col4.metric("Avg Work Hours", f"{work_hours:.1f}")
+    col5.metric("Projects", f"{total_projects}")
 
     st.markdown("---")
-    st.header("👷 Top Technicians")
-    techs_lash = lash_df.groupby("whoFilled")["LashFootage"].sum()
-    techs_pull = pull_df.groupby("whoFilled")["PullFootage"].sum()
-    techs_strand = strand_df.groupby("whoFilled")["StrandFootage"].sum()
+    st.header("👷 Technician Breakdown")
+    tech_lash = lash_df.groupby("whoFilled")["LashFootage"].sum().reset_index()
+    tech_pull = pull_df.groupby("whoFilled")["PullFootage"].sum().reset_index()
+    tech_strand = strand_df.groupby("whoFilled")["StrandFootage"].sum().reset_index()
 
-    col4, col5, col6 = st.columns(3)
-    with col4:
-        st.subheader("Lash")
-        st.bar_chart(techs_lash)
-    with col5:
-        st.subheader("Pull")
-        st.bar_chart(techs_pull)
-    with col6:
-        st.subheader("Strand")
-        st.bar_chart(techs_strand)
+    fig_lash = px.bar(tech_lash, x="LashFootage", y="whoFilled", orientation="h", title="Lash by Technician")
+    fig_pull = px.bar(tech_pull, x="PullFootage", y="whoFilled", orientation="h", title="Pull by Technician")
+    fig_strand = px.bar(tech_strand, x="StrandFootage", y="whoFilled", orientation="h", title="Strand by Technician")
+
+    st.plotly_chart(fig_lash, use_container_width=True)
+    st.plotly_chart(fig_pull, use_container_width=True)
+    st.plotly_chart(fig_strand, use_container_width=True)
+
+    st.markdown("---")
+    st.header("📈 Trends")
+    daily_totals = df.groupby(df["Submission Date"].dt.date).size().reset_index(name="Submissions")
+    fig_daily = px.line(daily_totals, x="Submission Date", y="Submissions", title="Daily Submissions")
+    st.plotly_chart(fig_daily, use_container_width=True)
 
     st.markdown("---")
     st.header("🚛 Most Used Trucks")
-    truck_counts = df["whatTruck"].value_counts().head(10)
-    st.bar_chart(truck_counts)
+    truck_counts = df["whatTruck"].value_counts().reset_index()
+    truck_counts.columns = ["Truck", "Count"]
+    fig_trucks = px.bar(truck_counts.head(10), x="Count", y="Truck", orientation="h")
+    st.plotly_chart(fig_trucks, use_container_width=True)
 
     st.markdown("---")
-    st.header("🗓️ Work Summary by Day")
-    daily_summary = df.groupby(df["Submission Date"].dt.date).size()
-    st.line_chart(daily_summary)
+    st.header("🌱 Top Projects by Count")
+    project_counts = df["projectOr"].value_counts().reset_index()
+    project_counts.columns = ["Project", "Count"]
+    fig_projects = px.bar(project_counts.head(10), x="Count", y="Project", orientation="h")
+    st.plotly_chart(fig_projects, use_container_width=True)
 
     st.markdown("---")
-    st.header("🌱 Projects Worked On")
-    project_summary = df.groupby("projectOr").size().sort_values(ascending=False).head(10)
-    st.bar_chart(project_summary)
-
-    st.markdown("---")
-    st.header("📋 Work Summary Table")
-    st.dataframe(df[["Submission Date", "projectOr", "whoFilled", "whatTruck", "typeA45", "fiberPull", "standInfo"]])
+    st.header("📋 Detailed Work Table")
+    st.dataframe(df[["Submission Date", "projectOr", "whoFilled", "whatTruck", "workHours", "typeA45", "fiberPull", "standInfo"]])
 
 if __name__ == "__main__":
     run_construction_dashboard()
