@@ -82,16 +82,13 @@ def run_construction_dashboard():
     lash_total = lash_df["LashFootage"].sum()
     pull_total = pull_df["PullFootage"].sum()
     strand_total = strand_df["StrandFootage"].sum()
-    work_hours = pd.to_numeric(df["workHours"], errors="coerce").fillna(0).mean()
-    total_submissions = len(df)
     total_projects = df["projectOr"].nunique()
 
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3, col4 = st.columns(4)
     col1.metric("Lash Footage", f"{lash_total:,}")
     col2.metric("Pull Footage", f"{pull_total:,}")
     col3.metric("Strand Footage", f"{strand_total:,}")
-    col4.metric("Avg Work Hours", f"{work_hours:.1f}")
-    col5.metric("Projects", f"{total_projects}")
+    col4.metric("Projects", f"{total_projects}")
 
     st.markdown("---")
     st.header("👷 Technician Breakdown")
@@ -108,10 +105,22 @@ def run_construction_dashboard():
     st.plotly_chart(fig_strand, use_container_width=True)
 
     st.markdown("---")
-    st.header("📈 Trends")
-    daily_totals = df.groupby(df["Submission Date"].dt.date).size().reset_index(name="Submissions")
-    fig_daily = px.line(daily_totals, x="Submission Date", y="Submissions", title="Daily Submissions")
-    st.plotly_chart(fig_daily, use_container_width=True)
+    st.header("🗓️ Average Work Hours per Truck per Week")
+
+    df["Week"] = df["Submission Date"].dt.to_period("W").apply(lambda r: r.start_time.date())
+    df["workHours"] = pd.to_numeric(df["workHours"], errors="coerce").fillna(0)
+    truck_week_avg = df.groupby(["whatTruck", "Week"])["workHours"].mean().reset_index()
+
+    fig_truck_week = px.bar(
+        truck_week_avg,
+        x="workHours",
+        y="whatTruck",
+        color="Week",
+        barmode="group",
+        orientation="h",
+        title="Average Work Hours per Truck per Week"
+    )
+    st.plotly_chart(fig_truck_week, use_container_width=True)
 
     st.markdown("---")
     st.header("🚛 Most Used Trucks")
