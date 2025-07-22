@@ -42,6 +42,7 @@ def run(df):
     new_customers = df[df["status"].str.lower() == "connect"].shape[0]
     churn_customers = df[df["status"].str.lower() == "disconnect"].shape[0]
 
+    st.markdown("## 📊 Key Metrics")
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Total Customers", total_customers)
     col2.metric("Total MRC", f"${total_mrc:,.2f}")
