@@ -4,7 +4,7 @@ def run_construction_dashboard():
     import pandas as pd
     import requests
 
-    st.title("Construction Dashboard — Inspecting typeA45 Values")
+    st.title("Construction Dashboard — Sample of All Columns")
 
     def load_from_jotform():
         api_key = "22179825a79dba61013e4fc3b9d30fa4"
@@ -32,13 +32,13 @@ def run_construction_dashboard():
     df = load_from_jotform()
     df.columns = df.columns.str.strip()
 
-    st.subheader("🧾 Unique Values in `typeA45` Column")
-    if "typeA45" in df.columns:
-        st.json(df["typeA45"].dropna().unique().tolist())
-    else:
-        st.error("🚨 The column `typeA45` was not found in the dataset.")
+    st.subheader("🗂️ Column Names")
+    st.json(list(df.columns))
 
-    st.info("📩 Copy the above values if you want to use them in KPIs or filters.")
+    st.subheader("📊 Sample Data (first 5 rows)")
+    st.dataframe(df.head(), use_container_width=True)
+
+    st.info("📩 Use the column names and sample data above to decide KPIs or charts.")
 
 if __name__ == "__main__":
     run_construction_dashboard()
