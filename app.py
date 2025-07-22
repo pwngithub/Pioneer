@@ -32,7 +32,13 @@ elif report == "Tally":
         for ans in answers.values():
             name = ans.get("name")
             answer = ans.get("answer")
-            if name and answer is not None:
+            if name == "date" and isinstance(answer, dict) and "datetime" in answer:
+                record["date"] = answer["datetime"]
+            elif name == "customerName" and isinstance(answer, dict):
+                record[name] = f"{answer.get('first','')} {answer.get('last','')}".strip()
+            elif isinstance(answer, dict):
+                record[name] = str(answer)
+            elif name and answer is not None:
                 record[name] = answer
         submissions.append(record)
 
