@@ -5,9 +5,11 @@ def run(df):
 
     st.title("Tally Dashboard")
 
-    # Show the columns returned from JotForm API
-    st.write("✅ Columns from JotForm API:", df.columns.tolist())
+    # Map column names
+    df.rename(columns={"date": "Submission Date"}, inplace=True)
 
-    # Existing logic starts here
-    # ...
-    st.markdown("### Please implement your KPIs and visuals here after mapping correct columns.")
+    # Continue with existing dashboard logic
+    st.write("✅ Columns after rename:", df.columns.tolist())
+
+    # Placeholder for KPIs & charts
+    st.markdown("### Please implement your KPIs and visuals here.")
