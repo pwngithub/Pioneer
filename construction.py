@@ -48,6 +48,9 @@ def run_construction_dashboard():
 
     df = df[(df["Submission Date"].dt.date >= start_date) & (df["Submission Date"].dt.date <= end_date)]
 
+    # weeks in range
+    weeks_in_range = max(1, ((end_date - start_date).days + 1) / 7)
+
     selected_projects = st.multiselect(
         "Filter by Project(s)",
         options=df["projectOr"].dropna().unique(),
@@ -91,63 +94,56 @@ def run_construction_dashboard():
     col4.metric("Projects", f"{total_projects}")
 
     st.markdown("---")
-    st.header("🗓️ 2-Week Average Lash, Pull, Strand per Truck (by Month)")
+    st.header(f"🗓️ Average Lash, Pull, Strand per Truck (per Week in Selected Range)")
 
-    df["Month"] = df["Submission Date"].dt.to_period("M").astype(str)
-    lash_df["Month"] = lash_df["Submission Date"].dt.to_period("M").astype(str)
-    pull_df["Month"] = pull_df["Submission Date"].dt.to_period("M").astype(str)
-    strand_df["Month"] = strand_df["Submission Date"].dt.to_period("M").astype(str)
+    lash_group = lash_df.groupby("whatTruck")["LashFootage"].sum().reset_index()
+    pull_group = pull_df.groupby("whatTruck")["PullFootage"].sum().reset_index()
+    strand_group = strand_df.groupby("whatTruck")["StrandFootage"].sum().reset_index()
 
-    lash_group = lash_df.groupby(["whatTruck", "Month"])["LashFootage"].sum().reset_index()
-    pull_group = pull_df.groupby(["whatTruck", "Month"])["PullFootage"].sum().reset_index()
-    strand_group = strand_df.groupby(["whatTruck", "Month"])["StrandFootage"].sum().reset_index()
-
-    merged = pd.merge(lash_group, pull_group, on=["whatTruck", "Month"], how="outer")
-    merged = pd.merge(merged, strand_group, on=["whatTruck", "Month"], how="outer")
+    merged = pd.merge(lash_group, pull_group, on="whatTruck", how="outer")
+    merged = pd.merge(merged, strand_group, on="whatTruck", how="outer")
     merged = merged.fillna(0)
 
-    merged["Lash2Week"] = merged["LashFootage"] / 2
-    merged["Pull2Week"] = merged["PullFootage"] / 2
-    merged["Strand2Week"] = merged["StrandFootage"] / 2
+    merged["LashPerWeek"] = merged["LashFootage"] / weeks_in_range
+    merged["PullPerWeek"] = merged["PullFootage"] / weeks_in_range
+    merged["StrandPerWeek"] = merged["StrandFootage"] / weeks_in_range
 
     melted = pd.melt(
         merged,
-        id_vars=["whatTruck", "Month"],
-        value_vars=["Lash2Week", "Pull2Week", "Strand2Week"],
+        id_vars=["whatTruck"],
+        value_vars=["LashPerWeek", "PullPerWeek", "StrandPerWeek"],
         var_name="Type",
-        value_name="2WeekAvgFootage"
+        value_name="AvgFootagePerWeek"
     )
 
-    fig_2week = px.bar(
+    fig_avg_truck = px.bar(
         melted,
-        x="2WeekAvgFootage",
+        x="AvgFootagePerWeek",
         y="whatTruck",
         color="Type",
         barmode="group",
         orientation="h",
-        facet_col="Month",
-        title="2-Week Average Lash, Pull, Strand per Truck by Month"
+        title="Average Lash, Pull, Strand per Truck per Week (Filtered Range)"
     )
-    st.plotly_chart(fig_2week, use_container_width=True)
+    st.plotly_chart(fig_avg_truck, use_container_width=True)
 
-    st.header("🧾 Total 2-Week Average of All Trucks per Month")
+    st.header("🧾 Total Average per Week (All Trucks Combined)")
 
-    totals = merged.groupby("Month")[["Lash2Week", "Pull2Week", "Strand2Week"]].sum().reset_index()
-    totals_melted = pd.melt(
-        totals,
-        id_vars=["Month"],
-        value_vars=["Lash2Week", "Pull2Week", "Strand2Week"],
-        var_name="Type",
-        value_name="2WeekAvgFootage"
-    )
+    total_lash_per_week = merged["LashFootage"].sum() / weeks_in_range
+    total_pull_per_week = merged["PullFootage"].sum() / weeks_in_range
+    total_strand_per_week = merged["StrandFootage"].sum() / weeks_in_range
+
+    total_df = pd.DataFrame({
+        "Type": ["Lash", "Pull", "Strand"],
+        "AvgPerWeek": [total_lash_per_week, total_pull_per_week, total_strand_per_week]
+    })
 
     fig_totals = px.bar(
-        totals_melted,
-        x="Month",
-        y="2WeekAvgFootage",
+        total_df,
+        x="Type",
+        y="AvgPerWeek",
         color="Type",
-        barmode="group",
-        title="Total 2-Week Average of All Trucks per Month"
+        title="Total Average per Week (All Trucks Combined)"
     )
     st.plotly_chart(fig_totals, use_container_width=True)
 
