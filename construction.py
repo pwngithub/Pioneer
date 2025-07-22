@@ -2,9 +2,12 @@
 def run_construction_dashboard():
     import streamlit as st
     import pandas as pd
+    import matplotlib.pyplot as plt
+    import json
+    import re
     import requests
 
-    st.title("Construction Dashboard — Sample of All Columns")
+    st.title("Construction Daily Workflow Dashboard")
 
     def load_from_jotform():
         api_key = "22179825a79dba61013e4fc3b9d30fa4"
@@ -32,13 +35,56 @@ def run_construction_dashboard():
     df = load_from_jotform()
     df.columns = df.columns.str.strip()
 
-    st.subheader("🗂️ Column Names")
-    st.json(list(df.columns))
+    df["Submission Date"] = pd.to_datetime(df["Submission Date"], errors="coerce")
+    df = df.dropna(subset=["Submission Date"])
 
-    st.subheader("📊 Sample Data (first 5 rows)")
-    st.dataframe(df.head(), use_container_width=True)
+    min_date = df["Submission Date"].min().date()
+    max_date = df["Submission Date"].max().date()
 
-    st.info("📩 Use the column names and sample data above to decide KPIs or charts.")
+    start_date, end_date = st.date_input(
+        "📅 Select date range",
+        value=(min_date, max_date),
+        min_value=min_date,
+        max_value=max_date
+    )
+
+    df = df[(df["Submission Date"].dt.date >= start_date) & (df["Submission Date"].dt.date <= end_date)]
+
+    def extract_lash_footage(df):
+        df = df.copy()
+        df["LashFootage"] = 0
+        for idx, val in df["typeA45"].dropna().items():
+            match = re.search(r"Footage[:\s]+(\d+)", val)
+            if match:
+                df.at[idx, "LashFootage"] = int(match.group(1))
+        return df
+
+    def extract_json_footage(df, column):
+        df = df.copy()
+        df["Footage"] = 0
+        for idx, val in df[column].dropna().items():
+            try:
+                items = json.loads(val)
+                for item in items:
+                    footage_str = item.get("Footage", "0").replace(",", "").strip()
+                    if footage_str.isdigit():
+                        df.at[idx, "Footage"] += int(footage_str)
+            except:
+                continue
+        return df
+
+    lash_df = extract_lash_footage(df[df["typeA45"].notna()])
+    pull_df = extract_json_footage(df[df["fiberPull"].notna()], "fiberPull")
+    strand_df = extract_json_footage(df[df["standInfo"].notna()], "standInfo")
+
+    lash_total = lash_df["LashFootage"].sum()
+    pull_total = pull_df["Footage"].sum()
+    strand_total = strand_df["Footage"].sum()
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Fiber Lash Footage", f"{lash_total:,}")
+    col2.metric("Fiber Pull Footage", f"{pull_total:,}")
+    col3.metric("Strand Footage", f"{strand_total:,}")
 
 if __name__ == "__main__":
     run_construction_dashboard()
