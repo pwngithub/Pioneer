@@ -105,22 +105,27 @@ def run_construction_dashboard():
     st.plotly_chart(fig_strand, use_container_width=True)
 
     st.markdown("---")
-    st.header("🗓️ Average Work Hours per Truck per Week")
+    st.header("🗓️ Average Lash, Pull, Strand per Truck")
 
-    df["Week"] = df["Submission Date"].dt.to_period("W").apply(lambda r: r.start_time.date())
-    df["workHours"] = pd.to_numeric(df["workHours"], errors="coerce").fillna(0)
-    truck_week_avg = df.groupby(["whatTruck", "Week"])["workHours"].mean().reset_index()
+    combined = df[["whatTruck"]].drop_duplicates().copy()
+    combined["LashFootage"] = lash_df.groupby("whatTruck")["LashFootage"].mean()
+    combined["PullFootage"] = pull_df.groupby("whatTruck")["PullFootage"].mean()
+    combined["StrandFootage"] = strand_df.groupby("whatTruck")["StrandFootage"].mean()
+    combined = combined.fillna(0).reset_index()
 
-    fig_truck_week = px.bar(
-        truck_week_avg,
-        x="workHours",
+    avg_melted = pd.melt(combined, id_vars=["whatTruck"], value_vars=["LashFootage", "PullFootage", "StrandFootage"],
+                         var_name="Type", value_name="AvgFootage")
+
+    fig_avg_truck = px.bar(
+        avg_melted,
+        x="AvgFootage",
         y="whatTruck",
-        color="Week",
+        color="Type",
         barmode="group",
         orientation="h",
-        title="Average Work Hours per Truck per Week"
+        title="Average Lash, Pull, Strand per Truck"
     )
-    st.plotly_chart(fig_truck_week, use_container_width=True)
+    st.plotly_chart(fig_avg_truck, use_container_width=True)
 
     st.markdown("---")
     st.header("🚛 Most Used Trucks")
