@@ -62,8 +62,8 @@ def run_construction_dashboard():
             except:
                 continue
         # merge back key metadata columns
-        for col in ["Town", "whoFilled", "whatTruck", "projectOr"]:
-            if col in df.columns:
+        for col in df.columns:
+            if col.lower() in ["town", "whofilled", "whattruck", "projector"]:
                 df_out[col] = df.loc[df_out.index, col]
         return df_out
 
@@ -82,8 +82,13 @@ def run_construction_dashboard():
 
     st.markdown("---")
     st.header("📍 Top Towns by Lash Footage")
-    town_summary = lash_df.groupby("Town")["LashFootage"].sum().reset_index().sort_values(by="LashFootage", ascending=False).head(10)
-    st.bar_chart(town_summary.set_index("Town"))
+
+    town_col = next((c for c in lash_df.columns if c.lower() == "town"), None)
+    if town_col:
+        town_summary = lash_df.groupby(town_col)["LashFootage"].sum().reset_index().sort_values(by="LashFootage", ascending=False).head(10)
+        st.bar_chart(town_summary.set_index(town_col))
+    else:
+        st.warning("No 'Town' column found in data.")
 
     st.markdown("---")
     st.header("👷 Top Technicians")
