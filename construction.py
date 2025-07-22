@@ -91,55 +91,45 @@ def run_construction_dashboard():
     col4.metric("Projects", f"{total_projects}")
 
     st.markdown("---")
-    st.header("👷 Technician Breakdown")
-    tech_lash = lash_df.groupby("whoFilled")["LashFootage"].sum().reset_index()
-    tech_pull = pull_df.groupby("whoFilled")["PullFootage"].sum().reset_index()
-    tech_strand = strand_df.groupby("whoFilled")["StrandFootage"].sum().reset_index()
+    st.header("🗓️ 2-Week Average Lash, Pull, Strand per Truck (by Month)")
 
-    fig_lash = px.bar(tech_lash, x="LashFootage", y="whoFilled", orientation="h", title="Lash by Technician")
-    fig_pull = px.bar(tech_pull, x="PullFootage", y="whoFilled", orientation="h", title="Pull by Technician")
-    fig_strand = px.bar(tech_strand, x="StrandFootage", y="whoFilled", orientation="h", title="Strand by Technician")
+    df["Month"] = df["Submission Date"].dt.to_period("M").astype(str)
+    lash_df["Month"] = lash_df["Submission Date"].dt.to_period("M").astype(str)
+    pull_df["Month"] = pull_df["Submission Date"].dt.to_period("M").astype(str)
+    strand_df["Month"] = strand_df["Submission Date"].dt.to_period("M").astype(str)
 
-    st.plotly_chart(fig_lash, use_container_width=True)
-    st.plotly_chart(fig_pull, use_container_width=True)
-    st.plotly_chart(fig_strand, use_container_width=True)
+    lash_group = lash_df.groupby(["whatTruck", "Month"])["LashFootage"].sum().reset_index()
+    pull_group = pull_df.groupby(["whatTruck", "Month"])["PullFootage"].sum().reset_index()
+    strand_group = strand_df.groupby(["whatTruck", "Month"])["StrandFootage"].sum().reset_index()
 
-    st.markdown("---")
-    st.header("🗓️ Average Lash, Pull, Strand per Truck")
+    merged = pd.merge(lash_group, pull_group, on=["whatTruck", "Month"], how="outer")
+    merged = pd.merge(merged, strand_group, on=["whatTruck", "Month"], how="outer")
+    merged = merged.fillna(0)
 
-    combined = df[["whatTruck"]].drop_duplicates().copy()
-    combined["LashFootage"] = lash_df.groupby("whatTruck")["LashFootage"].mean()
-    combined["PullFootage"] = pull_df.groupby("whatTruck")["PullFootage"].mean()
-    combined["StrandFootage"] = strand_df.groupby("whatTruck")["StrandFootage"].mean()
-    combined = combined.fillna(0).reset_index()
+    # compute 2-week averages
+    merged["Lash2Week"] = merged["LashFootage"] / 2
+    merged["Pull2Week"] = merged["PullFootage"] / 2
+    merged["Strand2Week"] = merged["StrandFootage"] / 2
 
-    avg_melted = pd.melt(combined, id_vars=["whatTruck"], value_vars=["LashFootage", "PullFootage", "StrandFootage"],
-                         var_name="Type", value_name="AvgFootage")
+    melted = pd.melt(
+        merged,
+        id_vars=["whatTruck", "Month"],
+        value_vars=["Lash2Week", "Pull2Week", "Strand2Week"],
+        var_name="Type",
+        value_name="2WeekAvgFootage"
+    )
 
-    fig_avg_truck = px.bar(
-        avg_melted,
-        x="AvgFootage",
+    fig_2week = px.bar(
+        melted,
+        x="2WeekAvgFootage",
         y="whatTruck",
         color="Type",
         barmode="group",
         orientation="h",
-        title="Average Lash, Pull, Strand per Truck"
+        facet_col="Month",
+        title="2-Week Average Lash, Pull, Strand per Truck by Month"
     )
-    st.plotly_chart(fig_avg_truck, use_container_width=True)
-
-    st.markdown("---")
-    st.header("🚛 Most Used Trucks")
-    truck_counts = df["whatTruck"].value_counts().reset_index()
-    truck_counts.columns = ["Truck", "Count"]
-    fig_trucks = px.bar(truck_counts.head(10), x="Count", y="Truck", orientation="h")
-    st.plotly_chart(fig_trucks, use_container_width=True)
-
-    st.markdown("---")
-    st.header("🌱 Top Projects by Count")
-    project_counts = df["projectOr"].value_counts().reset_index()
-    project_counts.columns = ["Project", "Count"]
-    fig_projects = px.bar(project_counts.head(10), x="Count", y="Project", orientation="h")
-    st.plotly_chart(fig_projects, use_container_width=True)
+    st.plotly_chart(fig_2week, use_container_width=True)
 
     st.markdown("---")
     st.header("📋 Detailed Work Table")
