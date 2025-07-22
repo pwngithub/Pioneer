@@ -6,6 +6,20 @@ def run_construction_dashboard():
     import json
     import requests
 
+    # Pioneer theme styling
+    st.markdown(
+        '''
+        <style>
+            .main {background-color: #ffffff;}
+            .block-container {padding-top: 2rem;}
+            h1, h2, h3 {color: #375EAB;}
+            .stMetric > div > div {background-color: #8BC53F; color: white; border-radius: 0.25rem; padding: 0.25rem;}
+        </style>
+        ''',
+        unsafe_allow_html=True
+    )
+
+    st.image("https://www.pioneerbroadband.net/sites/all/themes/pioneer/images/logo.png", width=300)
     st.title("Construction Dashboard")
 
     def load_from_jotform():
@@ -48,7 +62,6 @@ def run_construction_dashboard():
 
     df = df[(df["Submission Date"].dt.date >= start_date) & (df["Submission Date"].dt.date <= end_date)]
 
-    # weeks in range
     weeks_in_range = max(1, ((end_date - start_date).days + 1) / 7)
 
     selected_projects = st.multiselect(
@@ -94,7 +107,7 @@ def run_construction_dashboard():
     col4.metric("Projects", f"{total_projects}")
 
     st.markdown("---")
-    st.header(f"🗓️ Average Lash, Pull, Strand per Truck (per Week in Selected Range)")
+    st.header("Average Lash, Pull, Strand per Truck per Week (Filtered Range)")
 
     lash_group = lash_df.groupby("whatTruck")["LashFootage"].sum().reset_index()
     pull_group = pull_df.groupby("whatTruck")["PullFootage"].sum().reset_index()
@@ -127,7 +140,7 @@ def run_construction_dashboard():
     )
     st.plotly_chart(fig_avg_truck, use_container_width=True)
 
-    st.header("🧾 Total Average per Week (All Trucks Combined)")
+    st.header("Total Average per Week (All Trucks Combined)")
 
     total_lash_per_week = merged["LashFootage"].sum() / weeks_in_range
     total_pull_per_week = merged["PullFootage"].sum() / weeks_in_range
