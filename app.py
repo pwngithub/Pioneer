@@ -1,16 +1,14 @@
 
 import streamlit as st
 
-page = st.sidebar.selectbox("📊 Select Report", ["Home", "Talley", "Construction"])
+report = st.sidebar.selectbox("Select Report", ["Tally", "Construction", "Work Orders"])
 
-if page == "Home":
-    st.title("🏠 Welcome to Pioneer Dashboard")
-    st.markdown("Use the sidebar to select a specific report.")
-
-elif page == "Talley":
+if report == "Tally":
     import dashboard
     dashboard.run_dashboard()
-
-elif page == "Construction":
+elif report == "Construction":
     import construction
     construction.run_construction_dashboard()
+elif report == "Work Orders":
+    import workorders
+    workorders.run_workorders_dashboard()
