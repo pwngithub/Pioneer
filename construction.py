@@ -49,6 +49,21 @@ def run_construction_dashboard():
 
     df = df[(df["Submission Date"].dt.date >= start_date) & (df["Submission Date"].dt.date <= end_date)]
 
+    # Filters: Projects & Technicians
+    selected_projects = st.multiselect(
+        "Filter by Project(s)",
+        options=df["projectOr"].dropna().unique(),
+        default=df["projectOr"].dropna().unique()
+    )
+
+    selected_techs = st.multiselect(
+        "Filter by Technician(s)",
+        options=df["whoFilled"].dropna().unique(),
+        default=df["whoFilled"].dropna().unique()
+    )
+
+    df = df[df["projectOr"].isin(selected_projects) & df["whoFilled"].isin(selected_techs)]
+
     def extract_json_footage_from_column(df_partial, column, new_col):
         df_out = df_partial.copy()
         df_out[new_col] = 0
@@ -61,10 +76,6 @@ def run_construction_dashboard():
                         df_out.at[idx, new_col] += int(footage_str)
             except:
                 continue
-        # merge back key metadata columns
-        for col in df.columns:
-            if col.lower() in ["town", "whofilled", "whattruck", "projector"]:
-                df_out[col] = df.loc[df_out.index, col]
         return df_out
 
     lash_df = extract_json_footage_from_column(df[df["typeA45"].notna()], "typeA45", "LashFootage")
@@ -79,16 +90,6 @@ def run_construction_dashboard():
     col1.metric("Fiber Lash Footage", f"{lash_total:,}")
     col2.metric("Fiber Pull Footage", f"{pull_total:,}")
     col3.metric("Strand Footage", f"{strand_total:,}")
-
-    st.markdown("---")
-    st.header("📍 Top Towns by Lash Footage")
-
-    town_col = next((c for c in lash_df.columns if c.lower() == "town"), None)
-    if town_col:
-        town_summary = lash_df.groupby(town_col)["LashFootage"].sum().reset_index().sort_values(by="LashFootage", ascending=False).head(10)
-        st.bar_chart(town_summary.set_index(town_col))
-    else:
-        st.warning("No 'Town' column found in data.")
 
     st.markdown("---")
     st.header("👷 Top Technicians")
