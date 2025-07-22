@@ -4,7 +4,6 @@ def run_construction_dashboard():
     import pandas as pd
     import matplotlib.pyplot as plt
     import json
-    import re
     import requests
 
     st.title("Construction Daily Workflow Dashboard")
@@ -50,19 +49,23 @@ def run_construction_dashboard():
 
     df = df[(df["Submission Date"].dt.date >= start_date) & (df["Submission Date"].dt.date <= end_date)]
 
-    def extract_json_footage_from_column(df, column, new_col):
-        df = df.copy()
-        df[new_col] = 0
-        for idx, val in df[column].dropna().items():
+    def extract_json_footage_from_column(df_partial, column, new_col):
+        df_out = df_partial.copy()
+        df_out[new_col] = 0
+        for idx, val in df_out[column].dropna().items():
             try:
                 items = json.loads(val)
                 for item in items:
                     footage_str = item.get("Footage", "0").replace(",", "").strip()
                     if footage_str.isdigit():
-                        df.at[idx, new_col] += int(footage_str)
+                        df_out.at[idx, new_col] += int(footage_str)
             except:
                 continue
-        return df
+        # merge back key metadata columns
+        for col in ["Town", "whoFilled", "whatTruck", "projectOr"]:
+            if col in df.columns:
+                df_out[col] = df.loc[df_out.index, col]
+        return df_out
 
     lash_df = extract_json_footage_from_column(df[df["typeA45"].notna()], "typeA45", "LashFootage")
     pull_df = extract_json_footage_from_column(df[df["fiberPull"].notna()], "fiberPull", "PullFootage")
