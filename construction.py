@@ -54,9 +54,10 @@ def run_construction_dashboard():
         df = df.copy()
         df["LashFootage"] = 0
         for idx, val in df["typeA45"].dropna().items():
-            match = re.search(r"Footage[:\s]+(\d+)", val)
+            match = re.search(r"Footage[:\s]+([\d,]+)", val)
             if match:
-                df.at[idx, "LashFootage"] = int(match.group(1))
+                footage = int(match.group(1).replace(",", ""))
+                df.at[idx, "LashFootage"] = footage
         return df
 
     def extract_json_footage(df, column):
