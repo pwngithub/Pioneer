@@ -136,8 +136,15 @@ def run_construction_dashboard():
         color="Type",
         barmode="group",
         orientation="h",
-        title="Average Lash, Pull, Strand per Truck per Week (Filtered Range)"
+        title="Average Lash, Pull, Strand per Truck per Week (Filtered Range)",
+        template="plotly_dark",
+        color_discrete_map={
+            "LashPerWeek": "#375EAB",
+            "PullPerWeek": "#8BC53F",
+            "StrandPerWeek": "#999999"
+        }
     )
+    fig_avg_truck.update_traces(texttemplate='%{x:.0f}', textposition='auto', marker_line_width=0.5)
     st.plotly_chart(fig_avg_truck, use_container_width=True)
 
     st.header("Total Average per Week (All Trucks Combined)")
@@ -156,8 +163,15 @@ def run_construction_dashboard():
         x="Type",
         y="AvgPerWeek",
         color="Type",
+        template="plotly_dark",
+        color_discrete_map={
+            "Lash": "#375EAB",
+            "Pull": "#8BC53F",
+            "Strand": "#999999"
+        },
         title="Total Average per Week (All Trucks Combined)"
     )
+    fig_totals.update_traces(texttemplate='%{y:.0f}', textposition='auto', marker_line_width=0.5)
     st.plotly_chart(fig_totals, use_container_width=True)
 
     st.markdown("---")
