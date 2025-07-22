@@ -2,7 +2,7 @@
 def run(df):
     import streamlit as st
     import pandas as pd
-    import plotly.express as px
+    from datetime import datetime
 
     st.title("Tally Dashboard")
 
@@ -11,8 +11,14 @@ def run(df):
     df["Submission Date"] = pd.to_datetime(df["Submission Date"], errors="coerce")
     df["mrc"] = pd.to_numeric(df["mrc"], errors="coerce").fillna(0)
 
-    min_date = df["Submission Date"].min().date()
-    max_date = df["Submission Date"].max().date()
+    min_date = df["Submission Date"].min()
+    max_date = df["Submission Date"].max()
+
+    if pd.isna(min_date) or pd.isna(max_date):
+        min_date = max_date = datetime.today()
+
+    min_date = min_date.date()
+    max_date = max_date.date()
 
     start_date, end_date = st.date_input(
         "📅 Select date range",
