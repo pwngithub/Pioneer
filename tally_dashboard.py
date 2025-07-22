@@ -27,7 +27,10 @@ def run(df):
         max_value=max_date
     )
 
-    df = df[(df["Submission Date"].dt.date >= start_date) & (df["Submission Date"].dt.date <= end_date)]
+    start_ts = pd.Timestamp(start_date)
+    end_ts = pd.Timestamp(end_date)
+
+    df = df[(df["Submission Date"] >= start_ts) & (df["Submission Date"] <= end_ts)]
 
     total_customers = df.shape[0]
     total_mrc = df["mrc"].sum()
