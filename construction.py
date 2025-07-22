@@ -106,7 +106,6 @@ def run_construction_dashboard():
     merged = pd.merge(merged, strand_group, on=["whatTruck", "Month"], how="outer")
     merged = merged.fillna(0)
 
-    # compute 2-week averages
     merged["Lash2Week"] = merged["LashFootage"] / 2
     merged["Pull2Week"] = merged["PullFootage"] / 2
     merged["Strand2Week"] = merged["StrandFootage"] / 2
@@ -130,6 +129,27 @@ def run_construction_dashboard():
         title="2-Week Average Lash, Pull, Strand per Truck by Month"
     )
     st.plotly_chart(fig_2week, use_container_width=True)
+
+    st.header("🧾 Total 2-Week Average of All Trucks per Month")
+
+    totals = merged.groupby("Month")[["Lash2Week", "Pull2Week", "Strand2Week"]].sum().reset_index()
+    totals_melted = pd.melt(
+        totals,
+        id_vars=["Month"],
+        value_vars=["Lash2Week", "Pull2Week", "Strand2Week"],
+        var_name="Type",
+        value_name="2WeekAvgFootage"
+    )
+
+    fig_totals = px.bar(
+        totals_melted,
+        x="Month",
+        y="2WeekAvgFootage",
+        color="Type",
+        barmode="group",
+        title="Total 2-Week Average of All Trucks per Month"
+    )
+    st.plotly_chart(fig_totals, use_container_width=True)
 
     st.markdown("---")
     st.header("📋 Detailed Work Table")
