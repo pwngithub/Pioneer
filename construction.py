@@ -2,12 +2,9 @@
 def run_construction_dashboard():
     import streamlit as st
     import pandas as pd
-    import matplotlib.pyplot as plt
-    import json
-    import re
     import requests
 
-    st.title("Construction Daily Workflow Dashboard")
+    st.title("Construction Dashboard — Inspecting typeA45 Contents")
 
     def load_from_jotform():
         api_key = "22179825a79dba61013e4fc3b9d30fa4"
@@ -50,42 +47,11 @@ def run_construction_dashboard():
 
     df = df[(df["Submission Date"].dt.date >= start_date) & (df["Submission Date"].dt.date <= end_date)]
 
-    def extract_lash_footage(df):
-        df = df.copy()
-        df["LashFootage"] = 0
-        for idx, val in df["typeA45"].dropna().items():
-            match = re.search(r"Footage[:\s]+([\d,]+)", val)
-            if match:
-                footage = int(match.group(1).replace(",", ""))
-                df.at[idx, "LashFootage"] = footage
-        return df
+    st.subheader("🧾 Non-empty `typeA45` values in selected date range")
+    typeA45_nonempty = df[df["typeA45"].notna()][["Submission Date", "typeA45"]]
+    st.dataframe(typeA45_nonempty, use_container_width=True)
 
-    def extract_json_footage(df, column):
-        df = df.copy()
-        df["Footage"] = 0
-        for idx, val in df[column].dropna().items():
-            try:
-                items = json.loads(val)
-                for item in items:
-                    footage_str = item.get("Footage", "0").replace(",", "").strip()
-                    if footage_str.isdigit():
-                        df.at[idx, "Footage"] += int(footage_str)
-            except:
-                continue
-        return df
-
-    lash_df = extract_lash_footage(df[df["typeA45"].notna()])
-    pull_df = extract_json_footage(df[df["fiberPull"].notna()], "fiberPull")
-    strand_df = extract_json_footage(df[df["standInfo"].notna()], "standInfo")
-
-    lash_total = lash_df["LashFootage"].sum()
-    pull_total = pull_df["Footage"].sum()
-    strand_total = strand_df["Footage"].sum()
-
-    col1, col2, col3 = st.columns(3)
-    col1.metric("Fiber Lash Footage", f"{lash_total:,}")
-    col2.metric("Fiber Pull Footage", f"{pull_total:,}")
-    col3.metric("Strand Footage", f"{strand_total:,}")
+    st.info("📩 Please copy a few example `typeA45` values above and paste them here so I can refine the parsing logic.")
 
 if __name__ == "__main__":
     run_construction_dashboard()
