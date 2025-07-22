@@ -13,7 +13,14 @@ def run(df):
     It analyzes the live JotForm Tally data, focusing on churn reasons, MRC impact, and new customer trends.
     """)
 
-    df["Submission Date"] = pd.to_datetime(df["Submission Date"], errors="coerce")
+    
+if "date" in df.columns:
+    df.rename(columns={"date": "Submission Date"}, inplace=True)
+else:
+    st.error("🚨 No `date` column found in data. Available columns: {}".format(df.columns.tolist()))
+    return
+df["Submission Date"] = pd.to_datetime(df["Submission Date"], errors="coerce")
+
     df = df.dropna(subset=["Submission Date"])
     df["Month"] = df["Submission Date"].dt.to_period("M").astype(str)
 
