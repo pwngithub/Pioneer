@@ -30,7 +30,7 @@ st.title("Construction Dashboard")
         response = requests.get(url)
         response.raise_for_status()
         data = response.json()
-        
+
         submissions = []
         for item in data["content"]:
             answers = item.get("answers", {})
@@ -42,7 +42,7 @@ st.title("Construction Dashboard")
                 if name and answer is not None:
                     record[name] = answer
             submissions.append(record)
-        
+
         df = pd.DataFrame(submissions)
         return df
 
