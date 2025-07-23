@@ -48,7 +48,7 @@ def run(df):
     # --- Churn by Reason ---
     st.header("Churn Analysis by Reason")
     churn_summary = disconnects.groupby("reason").agg(
-        Count=("Reason", "count"),
+        Count=("reason", "count"),
         Total_MRC=("mrc", lambda x: pd.to_numeric(x, errors="coerce").fillna(0).sum())
     ).reset_index()
     churn_summary = churn_summary.sort_values(by="Count", ascending=False)
