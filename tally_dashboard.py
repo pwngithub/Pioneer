@@ -58,7 +58,7 @@ def run(df):
     fig_reason = px.bar(
         churn_summary,
         x="Count",
-        y="Reason",
+        y="reason",
         orientation="h",
         title="Churn by Reason (Sorted)",
         color="Count", color_continuous_scale=["#7CB342", "#405C88"],
