@@ -73,7 +73,7 @@ def run(df):
 
     fig_location = px.bar(
         loc_summary,
-        x="Location",
+        x="location",
         y="Count",
         title="Churn by Location (Top 20)",
         color="Count", color_continuous_scale=["#7CB342", "#405C88"]
@@ -100,7 +100,7 @@ def run(df):
     with col5:
         fig_new_loc = px.bar(
             new_by_location,
-            x="Location",
+            x="location",
             y="Count",
             title="New Customers by Location (Top 20)",
             color="Count", color_continuous_scale=["#7CB342", "#405C88"]
