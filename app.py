@@ -23,7 +23,6 @@ elif report == "Tally":
     response.raise_for_status()
     data = response.json()
 
-    st.write("🔷 Raw API content (first 1):", data.get("content", [])[:1])
 
     submissions = []
     for item in data.get("content", []):
@@ -42,7 +41,6 @@ elif report == "Tally":
                 record[name] = answer
         submissions.append(record)
 
-    st.write("🔷 Parsed records (first 5):", submissions[:5])
 
     df = pd.DataFrame(submissions)
     tally_dashboard.run(df)
