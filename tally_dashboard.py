@@ -90,7 +90,7 @@ def run(df):
     with col4:
         fig_new_cat = px.bar(
             new_by_category,
-            x="Category",
+            x="category",
             y="Count",
             title="New Customers by Category",
             color="Count", color_continuous_scale=["#7CB342", "#405C88"]
