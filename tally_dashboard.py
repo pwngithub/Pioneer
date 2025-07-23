@@ -87,6 +87,9 @@ def run(df):
 
     col4, col5 = st.columns(2)
 
+    st.subheader("📋 New Customer Analysis by Category")
+    st.dataframe(new_by_category, use_container_width=True)
+
     with col4:
         fig_new_cat = px.bar(
             new_by_category,
