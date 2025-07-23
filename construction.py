@@ -147,7 +147,34 @@ def run_construction_dashboard():
     fig_avg_truck.update_traces(texttemplate='%{x:.0f}', textposition='auto', marker_line_width=0.5)
     st.plotly_chart(fig_avg_truck, use_container_width=True)
 
-    st.header("Total Average per Week (All Trucks Combined)")
+    
+    st.header("Total Footage per Truck (Filtered Range)")
+
+    merged_totals = merged[["whatTruck", "LashFootage", "PullFootage", "StrandFootage"]]
+
+    melted_totals = pd.melt(
+        merged_totals,
+        id_vars=["whatTruck"],
+        value_vars=["LashFootage", "PullFootage", "StrandFootage"],
+        var_name="Type",
+        value_name="TotalFootage"
+    )
+
+    fig_totals_truck = px.bar(
+        melted_totals,
+        x="whatTruck", y="TotalFootage", color="Type",
+        barmode="group",
+        title="Total Lash, Pull, Strand per Truck (Filtered Range)",
+        template="plotly_dark",
+        color_discrete_map={
+            "LashFootage": "#375EAB",
+            "PullFootage": "#8BC53F",
+            "StrandFootage": "#999999"
+        }
+    )
+    fig_totals_truck.update_traces(texttemplate='%{y:.0f}', textposition='auto', marker_line_width=0.5)
+    st.plotly_chart(fig_totals_truck, use_container_width=True)
+st.header("Total Average per Week (All Trucks Combined)")
 
     total_lash_per_week = merged["LashFootage"].sum() / weeks_in_range
     total_pull_per_week = merged["PullFootage"].sum() / weeks_in_range
