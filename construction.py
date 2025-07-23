@@ -20,7 +20,8 @@ def run_construction_dashboard():
     )
 
     st.image("https://www.pioneerbroadband.net/sites/all/themes/pioneer/images/logo.png", width=300)
-    st.title("Construction Dashboard")
+    st.markdown("""<div style="text-align:center;"><img src='https://images.squarespace-cdn.com/content/v1/651eb4433b13e72c1034f375/369c5df0-5363-4827-b041-1add0367f447/PBB+long+logo.png?format=1500w' width="600"></div>""", unsafe_allow_html=True)
+st.title("Construction Dashboard")
 
     def load_from_jotform():
         api_key = "22179825a79dba61013e4fc3b9d30fa4"
