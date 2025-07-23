@@ -34,8 +34,8 @@ def run(df):
 
     # --- KPIs ---
     total_customers = len(df)
-    disconnects = df[df["Status"] == "Disconnect"]
-    new_customers = df[df["Status"] == "NEW"]
+    disconnects = df[df["status"].str.lower() == "disconnect"]
+    new_customers = df[df["status"].str.lower() == "new"]
     churn_mrc = pd.to_numeric(disconnects["MRC"], errors="coerce").fillna(0).sum()
 
     col1, col2, col3 = st.columns(3)
