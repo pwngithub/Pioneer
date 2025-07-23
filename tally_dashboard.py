@@ -13,18 +13,16 @@ def run(df):
     It analyzes the live JotForm Tally data, focusing on churn reasons, MRC impact, and new customer trends.
     """)
 
-    
-if "date" in df.columns:
-    df.rename(columns={"date": "Submission Date"}, inplace=True)
-else:
-    st.error("🚨 No `date` column found in data. Available columns: {}".format(df.columns.tolist()))
-    return
-df["Submission Date"] = pd.to_datetime(df["Submission Date"], errors="coerce")
+    if "date" in df.columns:
+        df.rename(columns={"date": "Submission Date"}, inplace=True)
+    else:
+        st.error("🚨 No `date` column found in data. Available columns: {}".format(df.columns.tolist()))
+        return
 
+    df["Submission Date"] = pd.to_datetime(df["Submission Date"], errors="coerce")
     df = df.dropna(subset=["Submission Date"])
     df["Month"] = df["Submission Date"].dt.to_period("M").astype(str)
 
-    
     # --- Date Range Filter ---
     st.sidebar.header("🔍 Filters")
     min_date, max_date = df["Submission Date"].min(), df["Submission Date"].max()
@@ -35,7 +33,6 @@ df["Submission Date"] = pd.to_datetime(df["Submission Date"], errors="coerce")
     ]
 
     # --- KPIs ---
-    
     total_customers = len(df)
     disconnects = df[df["Status"] == "Disconnect"]
     new_customers = df[df["Status"] == "NEW"]
@@ -47,7 +44,6 @@ df["Submission Date"] = pd.to_datetime(df["Submission Date"], errors="coerce")
     col3.metric("💲 Churn MRC Impact", f"${churn_mrc:,.2f}")
 
     st.markdown("---")
-
 
     # --- Churn by Reason ---
     st.header("Churn Analysis by Reason")
