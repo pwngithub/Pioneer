@@ -64,7 +64,12 @@ def run(df):
         color="Count", color_continuous_scale=["#7CB342", "#405C88"],
         height=500
     )
+    
+if churn_summary.empty:
+    st.info("No churn data available for the selected date range.")
+else:
     st.plotly_chart(fig_reason, use_container_width=True)
+
 
     # --- Churn by Location ---
     st.header("Churn by Location (Top 20)")
