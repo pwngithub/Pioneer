@@ -36,7 +36,7 @@ def run(df):
     total_customers = len(df)
     disconnects = df[df["status"].str.lower() == "disconnect"]
     new_customers = df[df["status"].str.lower() == "new"]
-    churn_mrc = pd.to_numeric(disconnects["MRC"], errors="coerce").fillna(0).sum()
+    churn_mrc = pd.to_numeric(disconnects["mrc"], errors="coerce").fillna(0).sum()
 
     col1, col2, col3 = st.columns(3)
     col1.metric("📈 Total Records", f"{total_customers}")
@@ -47,9 +47,9 @@ def run(df):
 
     # --- Churn by Reason ---
     st.header("Churn Analysis by Reason")
-    churn_summary = disconnects.groupby("Reason").agg(
+    churn_summary = disconnects.groupby("reason").agg(
         Count=("Reason", "count"),
-        Total_MRC=("MRC", lambda x: pd.to_numeric(x, errors="coerce").fillna(0).sum())
+        Total_MRC=("mrc", lambda x: pd.to_numeric(x, errors="coerce").fillna(0).sum())
     ).reset_index()
     churn_summary = churn_summary.sort_values(by="Count", ascending=False)
 
@@ -68,7 +68,7 @@ def run(df):
 
     # --- Churn by Location ---
     st.header("Churn by Location (Top 20)")
-    loc_summary = disconnects.groupby("Location").size().reset_index(name="Count")
+    loc_summary = disconnects.groupby("location").size().reset_index(name="Count")
     loc_summary = loc_summary.sort_values(by="Count", ascending=False).head(20)
 
     fig_location = px.bar(
@@ -82,8 +82,8 @@ def run(df):
 
     # --- New Customers ---
     st.header("New Customer Trends")
-    new_by_category = new_customers.groupby("Category").size().reset_index(name="Count").sort_values(by="Count", ascending=False)
-    new_by_location = new_customers.groupby("Location").size().reset_index(name="Count").sort_values(by="Count", ascending=False).head(20)
+    new_by_category = new_customers.groupby("category").size().reset_index(name="Count").sort_values(by="Count", ascending=False)
+    new_by_location = new_customers.groupby("location").size().reset_index(name="Count").sort_values(by="Count", ascending=False).head(20)
 
     col4, col5 = st.columns(2)
 
