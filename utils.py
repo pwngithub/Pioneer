@@ -1,24 +1,29 @@
 import requests
 import pandas as pd
 
-def fetch_jotform_data(form_id):
-    API_KEY = "ba9013143bfda3a448297144c0527f7e"  # Replace if needed
-    url = f"https://api.jotform.com/form/{form_id}/submissions?apiKey={API_KEY}"
-
+def fetch_jotform_data(form_id: str, api_key: str) -> pd.DataFrame:
+    url = f"https://api.jotform.com/form/{form_id}/submissions?apiKey={api_key}&limit=1000"
     response = requests.get(url)
-    submissions = response.json().get("content", [])
+    data = response.json()
 
     records = []
-    for s in submissions:
-        answers = s.get("answers", {})
+    for submission in data["content"]:
+        answers = submission.get("answers", {})
         record = {}
-        for answer in answers.values():
-            q_name = answer.get("name")
-            q_answer = answer.get("answer")
-            if isinstance(q_answer, dict) and 'prettyFormat' in q_answer:
-                record[q_name] = q_answer['prettyFormat']
-            else:
-                record[q_name] = q_answer
+        for qid, answer in answers.items():
+            name = answer.get("name")
+            value = answer.get("answer")
+            if isinstance(value, dict):
+                value = " ".join(str(v) for v in value.values() if v)
+            record[name] = value
         records.append(record)
 
     return pd.DataFrame(records)
+
+def preprocess_data(df: pd.DataFrame) -> pd.DataFrame:
+    # Basic standardization, fill missing values
+    df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
+    for col in df.columns:
+        if df[col].dtype == object:
+            df[col] = df[col].fillna("").astype(str).str.strip()
+    return df
