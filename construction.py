@@ -53,18 +53,7 @@ def run_construction_dashboard():
     min_date = df["Submission Date"].min().date()
     max_date = df["Submission Date"].max().date()
 
-
-from datetime import datetime, timedelta
-
-# Set default date range to last 7 days
-end_date = datetime.today()
-start_date = end_date - timedelta(days=7)
-
-start_date_input, end_date_input = st.date_input(
-    "Select Date Range",
-    value=(start_date, end_date),
-    max_value=end_date
-)
+    start_date, end_date = st.date_input(
         "📅 Select date range",
         value=(min_date, max_date),
         min_value=min_date,

@@ -1,18 +1,5 @@
 
 import pandas as pd
-
-from datetime import datetime, timedelta
-
-# Set default date range to last 7 days
-end_date = datetime.today()
-start_date = end_date - timedelta(days=7)
-
-start_date_input, end_date_input = st.date_input(
-    "Select Date Range",
-    value=(start_date, end_date),
-    max_value=end_date
-)
-
 import streamlit as st
 import plotly.express as px
 
