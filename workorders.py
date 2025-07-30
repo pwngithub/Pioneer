@@ -5,6 +5,15 @@ import plotly.express as px
 
 def run_workorders_dashboard():
     st.set_page_config(page_title="Technician Dashboard", layout="wide")
+
+    # Display the logo
+    st.markdown(
+        "<div style='text-align:center;'>"
+        "<img src='https://www.pioneerbroadband.net/sites/all/themes/pioneer/images/logo.png' width='300'>"
+        "</div>",
+        unsafe_allow_html=True
+    )
+
     st.markdown("<h1 style='color:#4A648C;text-align:center;'>🛠 Pioneer Broadband Work Orders Dashboard</h1>", unsafe_allow_html=True)
     st.markdown("<hr>", unsafe_allow_html=True)
 
