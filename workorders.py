@@ -111,7 +111,7 @@ def run_workorders_dashboard():
     fig2.update_layout(plot_bgcolor='white', title_font_color="#4A648C")
     st.plotly_chart(fig2, use_container_width=True)
 
-        st.markdown("### 🗂 Breakout Table: Daily Summary")
+    st.markdown("### 🗂 Breakout Table: Daily Summary")
     df_daily = (df.groupby(["Techinician", "Day", "Work Type"])
                 .agg(Jobs_Completed=("WO#", "nunique"),
                      Total_Entries=("WO#", "count"),
