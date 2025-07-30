@@ -5,7 +5,7 @@ import plotly.express as px
 
 def run_workorders_dashboard():
     st.set_page_config(page_title="Technician Dashboard", layout="wide")
-    st.markdown("<h1 style='color:#405C88;text-align:center;'>🛠 Pioneer Broadband Work Orders Dashboard</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='color:#4A648C;text-align:center;'>🛠 Pioneer Broadband Work Orders Dashboard</h1>", unsafe_allow_html=True)
     st.markdown("<hr>", unsafe_allow_html=True)
 
     uploaded_file = st.file_uploader("Upload Technician Workflow CSV", type=["csv"])
@@ -50,14 +50,14 @@ def run_workorders_dashboard():
 
     fig1 = px.bar(grouped_overall, x="Work Type", y="Total_Jobs",
                   color="Techinician", title="Total Jobs by Work Type",
-                  color_discrete_sequence=px.colors.qualitative.Set2)
-    fig1.update_layout(plot_bgcolor='white')
+                  color_discrete_sequence=["#8BC53F"])
+    fig1.update_layout(plot_bgcolor='white', title_font_color="#4A648C")
     st.plotly_chart(fig1, use_container_width=True)
 
     fig2 = px.bar(grouped_overall, x="Work Type", y="Average_Duration",
                   color="Techinician", title="Avg Duration by Work Type",
-                  color_discrete_sequence=px.colors.qualitative.Set2)
-    fig2.update_layout(plot_bgcolor='white')
+                  color_discrete_sequence=["#8BC53F"])
+    fig2.update_layout(plot_bgcolor='white', title_font_color="#4A648C")
     st.plotly_chart(fig2, use_container_width=True)
 
     df_company = (df.groupby("Work Type")
@@ -67,8 +67,8 @@ def run_workorders_dashboard():
 
     fig3 = px.bar(df_company, x="Work Type", y="Average_Duration",
                   title="Company Avg Duration by Work Type", color="Work Type",
-                  color_discrete_sequence=px.colors.qualitative.Set2)
-    fig3.update_layout(plot_bgcolor='white')
+                  color_discrete_sequence=["#8BC53F"])
+    fig3.update_layout(plot_bgcolor='white', title_font_color="#4A648C")
     st.plotly_chart(fig3, use_container_width=True)
 
     st.markdown("### 🗂 Breakout Table: Daily Summary")
