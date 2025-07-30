@@ -64,11 +64,11 @@ def run_workorders_dashboard():
     start_date, end_date = st.date_input("📅 Date Range", [min_day, max_day], min_value=min_day, max_value=max_day)
     df = df[(df["Day"] >= start_date) & (df["Day"] <= end_date)]
 
-    metrics_df = df.copy()
-    total_jobs = metrics_df["WO#"].nunique()
-    avg_duration = pd.to_numeric(metrics_df["Duration"].str.extract(r"(\d+\.?\d*)")[0], errors="coerce").mean() or 0
-    unique_statuses = metrics_df["Tech Status"].nunique()
-    tech_count = metrics_df["Techinician"].nunique()
+    
+    total_jobs = df["WO#"].nunique()
+    avg_duration = pd.to_numeric(df["Duration"].str.extract(r"(\d+\.?\d*)")[0], errors="coerce").mean() or 0
+    unique_statuses = df["Tech Status"].nunique()
+    tech_count = df["Techinician"].nunique()
     avg_jobs_per_tech = total_jobs / tech_count if tech_count else 0
     num_days = (end_date - start_date).days + 1
 
