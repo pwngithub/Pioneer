@@ -37,17 +37,19 @@ def run_workorders_dashboard():
 
         work_types = sorted(df["Work Type"].dropna().unique())
         technicians = sorted(df["Techinician"].dropna().unique())
-        days = sorted(df["Day"].dropna().unique())
+
+        min_day = df["Day"].min()
+        max_day = df["Day"].max()
+        start_date, end_date = st.date_input("Filter by Date Range", [min_day, max_day], min_value=min_day, max_value=max_day)
 
         selected_types = st.multiselect("Filter by Work Type", work_types, default=work_types)
         selected_techs = st.multiselect("Filter by Technician", technicians, default=technicians)
-        selected_days = st.multiselect("Filter by Day", days, default=days)
 
         st.subheader("📅 Daily Summary by Work Type")
         filtered_daily = df_daily[
             (df_daily["Work Type"].isin(selected_types)) &
             (df_daily["Techinician"].isin(selected_techs)) &
-            (df_daily["Day"].isin(selected_days))
+            (df_daily["Day"] >= start_date) & (df_daily["Day"] <= end_date)
         ]
         st.dataframe(filtered_daily, use_container_width=True)
 
