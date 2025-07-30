@@ -45,6 +45,14 @@ def run_workorders_dashboard():
             st.warning("No saved files found. Please upload one first.")
             return
         selected_file = st.selectbox("Select a saved file to load", saved_files)
+
+        st.markdown("### 🗑 Delete a Saved File")
+        file_to_delete = st.selectbox("Select a file to delete", saved_files, key="delete_file")
+        if st.button("Delete Selected File"):
+            os.remove(os.path.join(saved_folder, file_to_delete))
+            st.success(f"{file_to_delete} has been deleted.")
+            st.experimental_rerun()
+
         df = pd.read_csv(os.path.join(saved_folder, selected_file))
 
     df["Date When"] = pd.to_datetime(df["Date When"], errors="coerce")
