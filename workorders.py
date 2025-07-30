@@ -2,31 +2,51 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import os
 
 def run_workorders_dashboard():
     st.set_page_config(page_title="Technician Dashboard", layout="wide")
 
-    st.markdown("""<div style='text-align:center;'>
-<img src='https://images.squarespace-cdn.com/content/v1/651eb4433b13e72c1034f375/369c5df0-5363-4827-b041-1add0367f447/PBB+long+logo.png?format=1500w' width='500'>
-</div>""", unsafe_allow_html=True)
-
-    st.markdown('''''', unsafe_allow_html=True)
-
-    # Display the logo
-    st.markdown(
-        "",
-        unsafe_allow_html=True
-    )
+    st.markdown("""
+    <div style='text-align:center;'>
+    <img src='https://images.squarespace-cdn.com/content/v1/651eb4433b13e72c1034f375/369c5df0-5363-4827-b041-1add0367f447/PBB+long+logo.png?format=1500w' width='500'>
+    </div>
+    """, unsafe_allow_html=True)
 
     st.markdown("<h1 style='color:#4A648C;text-align:center;'>🛠 Pioneer Broadband Work Orders Dashboard</h1>", unsafe_allow_html=True)
     st.markdown("<hr>", unsafe_allow_html=True)
 
-    uploaded_file = st.file_uploader("Upload Technician Workflow CSV", type=["csv"])
-    if not uploaded_file:
-        st.info("Please upload a CSV to begin.")
-        return
+    # Create folder for saved uploads
+    saved_folder = "saved_uploads"
+    os.makedirs(saved_folder, exist_ok=True)
 
-    df = pd.read_csv(uploaded_file)
+    mode = st.radio("Select Mode", ["Upload New File", "Load Existing File"])
+
+    if mode == "Upload New File":
+        uploaded_file = st.file_uploader("Upload Technician Workflow CSV", type=["csv"])
+        custom_filename = st.text_input("Enter a name to save this file as (without extension):")
+
+        if uploaded_file and custom_filename:
+            save_path = os.path.join(saved_folder, custom_filename + ".csv")
+            with open(save_path, "wb") as f:
+                f.write(uploaded_file.read())
+            st.success(f"File saved as: {save_path}")
+            df = pd.read_csv(save_path)
+
+        elif uploaded_file and not custom_filename:
+            st.warning("Please enter a file name to save.")
+
+        else:
+            return
+
+    else:  # Load from existing saved files
+        saved_files = [f for f in os.listdir(saved_folder) if f.endswith(".csv")]
+        if not saved_files:
+            st.warning("No saved files found. Please upload one first.")
+            return
+        selected_file = st.selectbox("Select a saved file to load", saved_files)
+        df = pd.read_csv(os.path.join(saved_folder, selected_file))
+
     df["Date When"] = pd.to_datetime(df["Date When"], errors="coerce")
     df = df.dropna(subset=["Date When"])
     df["Day"] = df["Date When"].dt.date
@@ -34,7 +54,6 @@ def run_workorders_dashboard():
     min_day = df["Day"].min()
     max_day = df["Day"].max()
     start_date, end_date = st.date_input("📅 Date Range", [min_day, max_day], min_value=min_day, max_value=max_day)
-
     df = df[(df["Day"] >= start_date) & (df["Day"] <= end_date)]
 
     metrics_df = df.copy()
