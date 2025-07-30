@@ -18,7 +18,42 @@ def run_installs_dashboard():
     st.title("Inventory Transfer Dashboard (Auto-Fix Dates)")
 
 
-    uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx"])
+
+    # File handling block (persistent upload/load/delete)
+    saved_folder = "saved_installs"
+    os.makedirs(saved_folder, exist_ok=True)
+
+    mode = st.radio("Select Mode", ["Upload New File", "Load Existing File"])
+
+    if mode == "Upload New File":
+        uploaded_file = st.file_uploader("Upload Excel File", type=["xlsx"])
+        custom_filename = st.text_input("Enter a name to save this file as (without extension):")
+        if uploaded_file and custom_filename:
+            save_path = os.path.join(saved_folder, custom_filename + ".xlsx")
+            with open(save_path, "wb") as f:
+                f.write(uploaded_file.read())
+            st.success(f"File saved as: {save_path}")
+            df = pd.read_excel(save_path)
+        elif uploaded_file and not custom_filename:
+            st.warning("Please enter a file name to save.")
+        else:
+            st.stop()
+
+    else:
+        saved_files = [f for f in os.listdir(saved_folder) if f.endswith(".xlsx")]
+        if not saved_files:
+            st.warning("No saved install files found. Please upload one.")
+            st.stop()
+        selected_file = st.selectbox("Select a saved install file", saved_files)
+        df = pd.read_excel(os.path.join(saved_folder, selected_file))
+
+        # Delete option
+        st.markdown("### 🗑 Delete a Saved File")
+        file_to_delete = st.selectbox("Select a file to delete", saved_files, key="delete_install_file")
+        if st.button("Delete Selected Install File"):
+            os.remove(os.path.join(saved_folder, file_to_delete))
+            st.success(f"{file_to_delete} has been deleted.")
+            st.experimental_rerun()
     if uploaded_file:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         os.makedirs("uploads", exist_ok=True)
@@ -28,7 +63,6 @@ def run_installs_dashboard():
         st.success(f"File saved as: {save_path}")
 
     if not uploaded_file:
-        st.stop()
 
     df = pd.read_excel(uploaded_file)
 
