@@ -81,6 +81,17 @@ def run_workorders_dashboard():
     k5.metric("📈 Jobs per Technician", f"{avg_jobs_per_tech:.1f}")
     k6.metric("📆 Days Covered", num_days)
 
+    total_entries = df["WO#"].count()
+    duration_series = pd.to_numeric(df["Duration"].str.extract(r"(\d+\.?\d*)")[0], errors="coerce")
+    max_duration = duration_series.max() or 0
+    min_duration = duration_series.min() or 0
+
+    k7, k8, k9 = st.columns(3)
+    k7.metric("🧾 Total Entries", total_entries)
+    k8.metric("⏱️ Longest Duration (hrs)", f"{max_duration:.2f}")
+    k9.metric("⏱️ Shortest Duration (hrs)", f"{min_duration:.2f}")
+
+
     st.markdown("---")
 
     grouped_overall = (df.groupby(["Techinician", "Work Type"])
@@ -100,18 +111,7 @@ def run_workorders_dashboard():
     fig2.update_layout(plot_bgcolor='white', title_font_color="#4A648C")
     st.plotly_chart(fig2, use_container_width=True)
 
-    df_company = (df.groupby("Work Type")
-                  .agg(Total_Jobs=("WO#", "nunique"),
-                       Average_Duration=("Duration", lambda x: pd.to_numeric(x.str.extract(r"(\d+\.?\d*)")[0], errors="coerce").mean()))
-                  .reset_index())
-
-    fig3 = px.bar(df_company, x="Work Type", y="Average_Duration",
-                  title="Company Avg Duration by Work Type", color="Work Type",
-                  color_discrete_sequence=["#8BC53F"])
-    fig3.update_layout(plot_bgcolor='white', title_font_color="#4A648C")
-    st.plotly_chart(fig3, use_container_width=True)
-
-    st.markdown("### 🗂 Breakout Table: Daily Summary")
+        st.markdown("### 🗂 Breakout Table: Daily Summary")
     df_daily = (df.groupby(["Techinician", "Day", "Work Type"])
                 .agg(Jobs_Completed=("WO#", "nunique"),
                      Total_Entries=("WO#", "count"),
