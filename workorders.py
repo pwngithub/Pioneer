@@ -1,111 +1,84 @@
 
 import streamlit as st
 import pandas as pd
-import altair as alt
 import plotly.express as px
 
 def run_workorders_dashboard():
-    st.set_page_config(page_title="Tech Workflow Summary", layout="wide")
-
-    st.markdown("<div style='text-align:center;'><img src='https://images.squarespace-cdn.com/content/v1/651eb4433b13e72c1034f375/369c5df0-5363-4827-b041-1add0367f447/PBB+long+logo.png?format=1500w' width='600'></div>", unsafe_allow_html=True)
-    st.markdown("<h1 style='color:#405C88;'>🛠️ Technician Work Order Dashboard</h1>", unsafe_allow_html=True)
-    st.markdown("This report summarizes technician activity, job counts, durations, and status variety using daily and overall metrics from uploaded work order data.")
+    st.set_page_config(page_title="Technician Dashboard", layout="wide")
+    st.markdown("<h1 style='color:#405C88;text-align:center;'>🛠 Pioneer Broadband Work Orders Dashboard</h1>", unsafe_allow_html=True)
+    st.markdown("<hr>", unsafe_allow_html=True)
 
     uploaded_file = st.file_uploader("Upload Technician Workflow CSV", type=["csv"])
+    if not uploaded_file:
+        st.info("Please upload a CSV to begin.")
+        return
 
-    if uploaded_file:
-        df = pd.read_csv(uploaded_file)
-        df["Date When"] = pd.to_datetime(df["Date When"], errors="coerce")
-        df = df.dropna(subset=["Date When"])
-        df["Day"] = df["Date When"].dt.date
+    df = pd.read_csv(uploaded_file)
+    df["Date When"] = pd.to_datetime(df["Date When"], errors="coerce")
+    df = df.dropna(subset=["Date When"])
+    df["Day"] = df["Date When"].dt.date
 
-        min_day = df["Day"].min()
-        max_day = df["Day"].max()
-        start_date, end_date = st.date_input("📅 Filter by Date Range", [min_day, max_day], min_value=min_day, max_value=max_day)
+    min_day = df["Day"].min()
+    max_day = df["Day"].max()
+    start_date, end_date = st.date_input("📅 Date Range", [min_day, max_day], min_value=min_day, max_value=max_day)
 
-        work_types = sorted(df["Work Type"].dropna().unique())
-        technicians = sorted(df["Techinician"].dropna().unique())
+    df = df[(df["Day"] >= start_date) & (df["Day"] <= end_date)]
 
-        selected_types = st.multiselect("Filter by Work Type", work_types, default=work_types)
-        selected_techs = st.multiselect("Filter by Technician", technicians, default=technicians)
+    metrics_df = df.copy()
+    total_jobs = metrics_df["WO#"].nunique()
+    avg_duration = pd.to_numeric(metrics_df["Duration"].str.extract(r"(\d+\.?\d*)")[0], errors="coerce").mean() or 0
+    unique_statuses = metrics_df["Tech Status"].nunique()
+    tech_count = metrics_df["Techinician"].nunique()
+    avg_jobs_per_tech = total_jobs / tech_count if tech_count else 0
+    num_days = (end_date - start_date).days + 1
 
-        mask = (
-            (df["Work Type"].isin(selected_types)) &
-            (df["Techinician"].isin(selected_techs)) &
-            (df["Day"] >= start_date) & (df["Day"] <= end_date)
-        )
-        filtered_df = df[mask]
+    st.markdown("### 📌 Key Performance Indicators")
+    k1, k2, k3, k4, k5, k6 = st.columns(6)
+    k1.metric("🔧 Total Jobs", total_jobs)
+    k2.metric("🕒 Avg Duration (hrs)", f"{avg_duration:.2f}")
+    k3.metric("📋 Unique Statuses", unique_statuses)
+    k4.metric("👨‍🔧 Total Technicians", tech_count)
+    k5.metric("📈 Jobs per Technician", f"{avg_jobs_per_tech:.1f}")
+    k6.metric("📆 Days Covered", num_days)
 
-        # KPI Metrics
-        st.markdown("### 📌 Key Performance Indicators")
-        col1, col2, col3 = st.columns(3)
-        col1.metric("🔧 Total Jobs Completed", filtered_df["WO#"].nunique())
-        col2.metric("🕒 Average Duration", f"{pd.to_numeric(filtered_df['Duration'].str.extract(r'(\d+\.?\d*)')[0], errors='coerce').mean():.2f} hrs")
-        col3.metric("📋 Unique Tech Statuses", filtered_df["Tech Status"].nunique())
+    st.markdown("---")
 
-        st.markdown("---")
+    grouped_overall = (df.groupby(["Techinician", "Work Type"])
+                       .agg(Total_Jobs=("WO#", "nunique"),
+                            Average_Duration=("Duration", lambda x: pd.to_numeric(x.str.extract(r"(\d+\.?\d*)")[0], errors="coerce").mean()))
+                       .reset_index())
 
-        # Daily Summary
-        st.subheader("📅 Daily Summary by Work Type")
-        df_daily = filtered_df.groupby(["Techinician", "Day", "Work Type"]).agg(
-            Jobs_Completed=("WO#", "nunique"),
-            Total_Entries=("WO#", "count"),
-            Unique_Statuses=("Tech Status", pd.Series.nunique),
-            Average_Duration=("Duration", lambda x: pd.to_numeric(x.str.extract(r'(\d+\.?\d*)')[0], errors="coerce").mean())
-        ).reset_index()
-        st.dataframe(df_daily, use_container_width=True)
+    fig1 = px.bar(grouped_overall, x="Work Type", y="Total_Jobs",
+                  color="Techinician", title="Total Jobs by Work Type",
+                  color_discrete_sequence=px.colors.qualitative.Set2)
+    fig1.update_layout(plot_bgcolor='white')
+    st.plotly_chart(fig1, use_container_width=True)
 
-        # Overall Summary
-        st.subheader("📈 Overall Average Summary by Work Type")
-        df_overall = filtered_df.groupby(["Techinician", "Work Type"]).agg(
-            Total_Jobs=("WO#", "nunique"),
-            Total_Entries=("WO#", "count"),
-            Unique_Statuses=("Tech Status", pd.Series.nunique),
-            Average_Duration=("Duration", lambda x: pd.to_numeric(x.str.extract(r'(\d+\.?\d*)')[0], errors="coerce").mean())
-        ).reset_index()
-        st.dataframe(df_overall, use_container_width=True)
+    fig2 = px.bar(grouped_overall, x="Work Type", y="Average_Duration",
+                  color="Techinician", title="Avg Duration by Work Type",
+                  color_discrete_sequence=px.colors.qualitative.Set2)
+    fig2.update_layout(plot_bgcolor='white')
+    st.plotly_chart(fig2, use_container_width=True)
 
-        # Charts
-        st.markdown("### 📊 Visualizations")
+    df_company = (df.groupby("Work Type")
+                  .agg(Total_Jobs=("WO#", "nunique"),
+                       Average_Duration=("Duration", lambda x: pd.to_numeric(x.str.extract(r"(\d+\.?\d*)")[0], errors="coerce").mean()))
+                  .reset_index())
 
-        fig_jobs = px.bar(
-            df_overall,
-            x="Work Type",
-            y="Total_Jobs",
-            color="Techinician",
-            title="Total Jobs by Work Type",
-            color_discrete_sequence=px.colors.qualitative.Set2
-        )
-        st.plotly_chart(fig_jobs, use_container_width=True)
+    fig3 = px.bar(df_company, x="Work Type", y="Average_Duration",
+                  title="Company Avg Duration by Work Type", color="Work Type",
+                  color_discrete_sequence=px.colors.qualitative.Set2)
+    fig3.update_layout(plot_bgcolor='white')
+    st.plotly_chart(fig3, use_container_width=True)
 
-        fig_duration = px.bar(
-            df_overall,
-            x="Work Type",
-            y="Average_Duration",
-            color="Techinician",
-            title="Average Duration by Work Type",
-            color_discrete_sequence=px.colors.qualitative.Set2
-        )
-        st.plotly_chart(fig_duration, use_container_width=True)
+    st.markdown("### 🗂 Breakout Table: Daily Summary")
+    df_daily = (df.groupby(["Techinician", "Day", "Work Type"])
+                .agg(Jobs_Completed=("WO#", "nunique"),
+                     Total_Entries=("WO#", "count"),
+                     Avg_Duration=("Duration", lambda x: pd.to_numeric(x.str.extract(r"(\d+\.?\d*)")[0], errors="coerce").mean()))
+                .reset_index())
+    st.dataframe(df_daily, use_container_width=True)
 
-        # Company Average
-        st.subheader("🏢 Company-Wide Averages")
-        df_company_avg = filtered_df.groupby("Work Type").agg(
-            Total_Jobs=("WO#", "nunique"),
-            Average_Duration=("Duration", lambda x: pd.to_numeric(x.str.extract(r'(\d+\.?\d*)')[0], errors="coerce").mean())
-        ).reset_index()
-
-        fig_company = px.bar(
-            df_company_avg,
-            x="Work Type",
-            y="Average_Duration",
-            title="Company Average Duration by Work Type",
-            color="Work Type",
-            color_discrete_sequence=px.colors.qualitative.Set2
-        )
-        st.plotly_chart(fig_company, use_container_width=True)
-
-        # Export
-        st.subheader("📤 Export Filtered Data")
-        csv = df_overall.to_csv(index=False).encode("utf-8")
-        st.download_button("Download Overall Summary as CSV", data=csv, file_name="filtered_overall_summary.csv", mime="text/csv")
+    st.markdown("### 📤 Export Overall Summary")
+    csv = grouped_overall.to_csv(index=False).encode('utf-8')
+    st.download_button("Download Summary CSV", data=csv, file_name="workorders_summary.csv", mime="text/csv")
