@@ -15,14 +15,12 @@ if report == "Home":
 elif report == "Tally":
     import tally_dashboard
 
-    # Load Tally data (JotForm API)
     api_key = "22179825a79dba61013e4fc3b9d30fa4"
     form_id = "240073839937062"
     url = f"https://api.jotform.com/form/{form_id}/submissions?apiKey={api_key}&limit=1000"
     response = requests.get(url)
     response.raise_for_status()
     data = response.json()
-
 
     submissions = []
     for item in data.get("content", []):
@@ -40,7 +38,6 @@ elif report == "Tally":
             elif name and answer is not None:
                 record[name] = answer
         submissions.append(record)
-
 
     df = pd.DataFrame(submissions)
     tally_dashboard.run(df)
