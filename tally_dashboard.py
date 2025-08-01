@@ -1,182 +1,114 @@
 
-def run_construction_dashboard():
-    import streamlit as st
-    import pandas as pd
-    import plotly.express as px
-    import json
-    import requests
+import pandas as pd
+import streamlit as st
+import plotly.express as px
 
-    # Pioneer theme styling
-    st.markdown(
-        '''
-        <style>
-            .main {background-color: #ffffff;}
-            .block-container {padding-top: 2rem;}
-            h1, h2, h3 {color: #375EAB;}
-            .stMetric > div > div {background-color: #8BC53F; color: white; border-radius: 0.25rem; padding: 0.25rem;}
-        </style>
-        ''',
-        unsafe_allow_html=True
-    )
+def run(df):
+    st.set_page_config(page_title="Customer Activity Report", layout="wide")
+    st.markdown("""<div style="text-align:center;"><img src='https://images.squarespace-cdn.com/content/v1/651eb4433b13e72c1034f375/369c5df0-5363-4827-b041-1add0367f447/PBB+long+logo.png?format=1500w' width="600"></div>""", unsafe_allow_html=True)
 
-    st.image("https://www.pioneerbroadband.net/sites/all/themes/pioneer/images/logo.png", width=300)
-    st.title("Tally Dashboard")
+    st.markdown("<h1 style='color:#405C88;'>📊 Monthly Customer Performance Report</h1>", unsafe_allow_html=True)
+    st.markdown("""
+    This dashboard presents key metrics and insights into customer churn and growth. 
+    It analyzes the live JotForm Tally data, focusing on churn reasons, MRC impact, and new customer trends.
+    """)
 
-    def load_from_jotform():
-        api_key = "22179825a79dba61013e4fc3b9d30fa4"
-        form_id = "230173417525047"
-        url = f"https://api.jotform.com/form/{form_id}/submissions?apiKey={api_key}&limit=1000"
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-        
-        submissions = []
-        for item in data["content"]:
-            answers = item.get("answers", {})
-            submission_date = item.get("created_at", None)
-            record = {"Submission Date": submission_date}
-            for ans in answers.values():
-                name = ans.get("name")
-                answer = ans.get("answer")
-                if name and answer is not None:
-                    record[name] = answer
-            submissions.append(record)
-        
-        df = pd.DataFrame(submissions)
-        return df
+    if "date" in df.columns:
+        df.rename(columns={"date": "Submission Date"}, inplace=True)
+    else:
+        st.error("🚨 No `date` column found in data. Available columns: {}".format(df.columns.tolist()))
+        return
 
-    df = load_from_jotform()
-    df.columns = df.columns.str.strip()
     df["Submission Date"] = pd.to_datetime(df["Submission Date"], errors="coerce")
     df = df.dropna(subset=["Submission Date"])
+    df["Month"] = df["Submission Date"].dt.to_period("M").astype(str)
 
-    min_date = df["Submission Date"].min().date()
-    max_date = df["Submission Date"].max().date()
+    # --- Date Range Filter ---
+    st.sidebar.header("🔍 Filters")
+    min_date, max_date = df["Submission Date"].min(), df["Submission Date"].max()
+    start_date, end_date = st.sidebar.date_input("Submission Date Range", [min_date, max_date])
+    df = df[
+        (df["Submission Date"] >= pd.Timestamp(start_date)) &
+        (df["Submission Date"] <= pd.Timestamp(end_date))
+    ]
 
-    start_date, end_date = st.date_input(
-        "📅 Select date range",
-        value=(min_date, max_date),
-        min_value=min_date,
-        max_value=max_date
-    )
+    # --- KPIs ---
+    total_customers = len(df)
+    disconnects = df[df["status"].str.lower() == "disconnect"]
+    new_customers = df[df["status"].str.lower() == "new"]
+    churn_mrc = pd.to_numeric(disconnects["mrc"], errors="coerce").fillna(0).sum()
 
-    df = df[(df["Submission Date"].dt.date >= start_date) & (df["Submission Date"].dt.date <= end_date)]
-
-    weeks_in_range = max(1, ((end_date - start_date).days + 1) / 7)
-
-    selected_projects = st.multiselect(
-        "Filter by Project(s)",
-        options=df["projectOr"].dropna().unique(),
-        default=df["projectOr"].dropna().unique()
-    )
-    selected_techs = st.multiselect(
-        "Filter by Technician(s)",
-        options=df["whoFilled"].dropna().unique(),
-        default=df["whoFilled"].dropna().unique()
-    )
-
-    df = df[df["projectOr"].isin(selected_projects) & df["whoFilled"].isin(selected_techs)]
-
-    def extract_json_footage(df_partial, column, new_col):
-        df_out = df_partial.copy()
-        df_out[new_col] = 0
-        for idx, val in df_out[column].dropna().items():
-            try:
-                items = json.loads(val)
-                for item in items:
-                    footage_str = item.get("Footage", "0").replace(",", "").strip()
-                    if footage_str.isdigit():
-                        df_out.at[idx, new_col] += int(footage_str)
-            except:
-                continue
-        return df_out
-
-    lash_df = extract_json_footage(df[df["typeA45"].notna()], "typeA45", "LashFootage")
-    pull_df = extract_json_footage(df[df["fiberPull"].notna()], "fiberPull", "PullFootage")
-    strand_df = extract_json_footage(df[df["standInfo"].notna()], "standInfo", "StrandFootage")
-
-    lash_total = lash_df["LashFootage"].sum()
-    pull_total = pull_df["PullFootage"].sum()
-    strand_total = strand_df["StrandFootage"].sum()
-    total_projects = df["projectOr"].nunique()
-
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Lash Footage", f"{lash_total:,}")
-    col2.metric("Pull Footage", f"{pull_total:,}")
-    col3.metric("Strand Footage", f"{strand_total:,}")
-    col4.metric("Projects", f"{total_projects}")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("📈 Total Records", f"{total_customers}")
+    col2.metric("📉 Churned Customers", f"{len(disconnects)}")
+    col3.metric("💲 Churn MRC Impact", f"${churn_mrc:,.2f}")
 
     st.markdown("---")
-    st.header("Average Lash, Pull, Strand per Truck per Week (Filtered Range)")
 
-    lash_group = lash_df.groupby("whatTruck")["LashFootage"].sum().reset_index()
-    pull_group = pull_df.groupby("whatTruck")["PullFootage"].sum().reset_index()
-    strand_group = strand_df.groupby("whatTruck")["StrandFootage"].sum().reset_index()
+    # --- Churn by Reason ---
+    st.header("Churn Analysis by Reason")
+    churn_summary = disconnects.groupby("reason").agg(
+        Count=("reason", "count"),
+        Total_MRC=("mrc", lambda x: pd.to_numeric(x, errors="coerce").fillna(0).sum())
+    ).reset_index()
+    churn_summary = churn_summary.sort_values(by="Count", ascending=False)
 
-    merged = pd.merge(lash_group, pull_group, on="whatTruck", how="outer")
-    merged = pd.merge(merged, strand_group, on="whatTruck", how="outer")
-    merged = merged.fillna(0)
+    st.dataframe(churn_summary, use_container_width=True)
 
-    merged["LashPerWeek"] = merged["LashFootage"] / weeks_in_range
-    merged["PullPerWeek"] = merged["PullFootage"] / weeks_in_range
-    merged["StrandPerWeek"] = merged["StrandFootage"] / weeks_in_range
-
-    melted = pd.melt(
-        merged,
-        id_vars=["whatTruck"],
-        value_vars=["LashPerWeek", "PullPerWeek", "StrandPerWeek"],
-        var_name="Type",
-        value_name="AvgFootagePerWeek"
-    )
-
-    fig_avg_truck = px.bar(
-        melted,
-        x="AvgFootagePerWeek",
-        y="whatTruck",
-        color="Type",
-        barmode="group",
+    fig_reason = px.bar(
+        churn_summary,
+        x="Count",
+        y="reason",
         orientation="h",
-        title="Average Lash, Pull, Strand per Truck per Week (Filtered Range)",
-        template="plotly_dark",
-        color_discrete_map={
-            "LashPerWeek": "#375EAB",
-            "PullPerWeek": "#8BC53F",
-            "StrandPerWeek": "#999999"
-        }
+        title="Churn by Reason (Sorted)",
+        color="Count", color_continuous_scale=["#7CB342", "#405C88"],
+        height=500
     )
-    fig_avg_truck.update_traces(texttemplate='%{x:.0f}', textposition='auto', marker_line_width=0.5)
-    st.plotly_chart(fig_avg_truck, use_container_width=True)
+    st.plotly_chart(fig_reason, use_container_width=True)
 
-    st.header("Total Average per Week (All Trucks Combined)")
+    # --- Churn by Location ---
+    st.header("Churn by Location (Top 20)")
+    loc_summary = disconnects.groupby("location").size().reset_index(name="Count")
+    loc_summary = loc_summary.sort_values(by="Count", ascending=False).head(20)
 
-    total_lash_per_week = merged["LashFootage"].sum() / weeks_in_range
-    total_pull_per_week = merged["PullFootage"].sum() / weeks_in_range
-    total_strand_per_week = merged["StrandFootage"].sum() / weeks_in_range
-
-    total_df = pd.DataFrame({
-        "Type": ["Lash", "Pull", "Strand"],
-        "AvgPerWeek": [total_lash_per_week, total_pull_per_week, total_strand_per_week]
-    })
-
-    fig_totals = px.bar(
-        total_df,
-        x="Type",
-        y="AvgPerWeek",
-        color="Type",
-        template="plotly_dark",
-        color_discrete_map={
-            "Lash": "#375EAB",
-            "Pull": "#8BC53F",
-            "Strand": "#999999"
-        },
-        title="Total Average per Week (All Trucks Combined)"
+    fig_location = px.bar(
+        loc_summary,
+        x="location",
+        y="Count",
+        title="Churn by Location (Top 20)",
+        color="Count", color_continuous_scale=["#7CB342", "#405C88"]
     )
-    fig_totals.update_traces(texttemplate='%{y:.0f}', textposition='auto', marker_line_width=0.5)
-    st.plotly_chart(fig_totals, use_container_width=True)
+    st.plotly_chart(fig_location, use_container_width=True)
+
+    # --- New Customers ---
+    st.header("New Customer Trends")
+    new_by_category = new_customers.groupby("category").size().reset_index(name="Count").sort_values(by="Count", ascending=False)
+    new_by_location = new_customers.groupby("location").size().reset_index(name="Count").sort_values(by="Count", ascending=False).head(20)
+
+    col4, col5 = st.columns(2)
+
+    st.subheader("📋 New Customer Analysis by Category")
+    st.dataframe(new_by_category, use_container_width=True)
+
+    with col4:
+        fig_new_cat = px.bar(
+            new_by_category,
+            x="category",
+            y="Count",
+            title="New Customers by Category",
+            color="Count", color_continuous_scale=["#7CB342", "#405C88"]
+        )
+        st.plotly_chart(fig_new_cat, use_container_width=True)
+
+    with col5:
+        fig_new_loc = px.bar(
+            new_by_location,
+            x="location",
+            y="Count",
+            title="New Customers by Location (Top 20)",
+            color="Count", color_continuous_scale=["#7CB342", "#405C88"]
+        )
+        st.plotly_chart(fig_new_loc, use_container_width=True)
 
     st.markdown("---")
-    st.header("📋 Detailed Work Table")
-    st.dataframe(df[["Submission Date", "projectOr", "whoFilled", "whatTruck", "workHours", "typeA45", "fiberPull", "standInfo"]])
-
-if __name__ == "__main__":
-    run_construction_dashboard()
+    st.caption("<span style='color:#405C88;'>Professional Dashboard generated with ❤️ for Board Review</span>", unsafe_allow_html=True)
