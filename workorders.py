@@ -1,124 +1,182 @@
 
-import streamlit as st
-import pandas as pd
-import plotly.express as px
-import os
+def run_construction_dashboard():
+    import streamlit as st
+    import pandas as pd
+    import plotly.express as px
+    import json
+    import requests
 
-def run_workorders_dashboard():
-    st.set_page_config(page_title="Technician Dashboard", layout="wide")
+    # Pioneer theme styling
+    st.markdown(
+        '''
+        <style>
+            .main {background-color: #ffffff;}
+            .block-container {padding-top: 2rem;}
+            h1, h2, h3 {color: #375EAB;}
+            .stMetric > div > div {background-color: #8BC53F; color: white; border-radius: 0.25rem; padding: 0.25rem;}
+        </style>
+        ''',
+        unsafe_allow_html=True
+    )
 
-    st.markdown("""
-    <div style='text-align:center;'>
-    <img src='https://images.squarespace-cdn.com/content/v1/651eb4433b13e72c1034f375/369c5df0-5363-4827-b041-1add0367f447/PBB+long+logo.png?format=1500w' width='500'>
-    </div>
-    """, unsafe_allow_html=True)
+    st.image("https://www.pioneerbroadband.net/sites/all/themes/pioneer/images/logo.png", width=300)
+    st.title("Work Orders Dashboard")
 
-    st.markdown("<h1 style='color:#4A648C;text-align:center;'>🛠 Pioneer Broadband Work Orders Dashboard</h1>", unsafe_allow_html=True)
-    st.markdown("<hr>", unsafe_allow_html=True)
+    def load_from_jotform():
+        api_key = "22179825a79dba61013e4fc3b9d30fa4"
+        form_id = "230173417525047"
+        url = f"https://api.jotform.com/form/{form_id}/submissions?apiKey={api_key}&limit=1000"
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        
+        submissions = []
+        for item in data["content"]:
+            answers = item.get("answers", {})
+            submission_date = item.get("created_at", None)
+            record = {"Submission Date": submission_date}
+            for ans in answers.values():
+                name = ans.get("name")
+                answer = ans.get("answer")
+                if name and answer is not None:
+                    record[name] = answer
+            submissions.append(record)
+        
+        df = pd.DataFrame(submissions)
+        return df
 
-    # Create folder for saved uploads
-    saved_folder = "saved_uploads"
-    os.makedirs(saved_folder, exist_ok=True)
+    df = load_from_jotform()
+    df.columns = df.columns.str.strip()
+    df["Submission Date"] = pd.to_datetime(df["Submission Date"], errors="coerce")
+    df = df.dropna(subset=["Submission Date"])
 
-    mode = st.radio("Select Mode", ["Upload New File", "Load Existing File"])
+    min_date = df["Submission Date"].min().date()
+    max_date = df["Submission Date"].max().date()
 
-    if mode == "Upload New File":
-        uploaded_file = st.file_uploader("Upload Technician Workflow CSV", type=["csv"])
-        custom_filename = st.text_input("Enter a name to save this file as (without extension):")
+    start_date, end_date = st.date_input(
+        "📅 Select date range",
+        value=(min_date, max_date),
+        min_value=min_date,
+        max_value=max_date
+    )
 
-        if uploaded_file and custom_filename:
-            save_path = os.path.join(saved_folder, custom_filename + ".csv")
-            with open(save_path, "wb") as f:
-                f.write(uploaded_file.read())
-            st.success(f"File saved as: {save_path}")
-            df = pd.read_csv(save_path)
+    df = df[(df["Submission Date"].dt.date >= start_date) & (df["Submission Date"].dt.date <= end_date)]
 
-        elif uploaded_file and not custom_filename:
-            st.warning("Please enter a file name to save.")
+    weeks_in_range = max(1, ((end_date - start_date).days + 1) / 7)
 
-        else:
-            return
+    selected_projects = st.multiselect(
+        "Filter by Project(s)",
+        options=df["projectOr"].dropna().unique(),
+        default=df["projectOr"].dropna().unique()
+    )
+    selected_techs = st.multiselect(
+        "Filter by Technician(s)",
+        options=df["whoFilled"].dropna().unique(),
+        default=df["whoFilled"].dropna().unique()
+    )
 
-    else:  # Load from existing saved files
-        saved_files = [f for f in os.listdir(saved_folder) if f.endswith(".csv")]
-        if not saved_files:
-            st.warning("No saved files found. Please upload one first.")
-            return
-        selected_file = st.selectbox("Select a saved file to load", saved_files)
+    df = df[df["projectOr"].isin(selected_projects) & df["whoFilled"].isin(selected_techs)]
 
-        st.markdown("### 🗑 Delete a Saved File")
-        file_to_delete = st.selectbox("Select a file to delete", saved_files, key="delete_file")
-        if st.button("Delete Selected File"):
-            os.remove(os.path.join(saved_folder, file_to_delete))
-            st.success(f"{file_to_delete} has been deleted.")
-            st.experimental_rerun()
+    def extract_json_footage(df_partial, column, new_col):
+        df_out = df_partial.copy()
+        df_out[new_col] = 0
+        for idx, val in df_out[column].dropna().items():
+            try:
+                items = json.loads(val)
+                for item in items:
+                    footage_str = item.get("Footage", "0").replace(",", "").strip()
+                    if footage_str.isdigit():
+                        df_out.at[idx, new_col] += int(footage_str)
+            except:
+                continue
+        return df_out
 
-        df = pd.read_csv(os.path.join(saved_folder, selected_file))
+    lash_df = extract_json_footage(df[df["typeA45"].notna()], "typeA45", "LashFootage")
+    pull_df = extract_json_footage(df[df["fiberPull"].notna()], "fiberPull", "PullFootage")
+    strand_df = extract_json_footage(df[df["standInfo"].notna()], "standInfo", "StrandFootage")
 
-    df["Date When"] = pd.to_datetime(df["Date When"], errors="coerce")
-    df = df.dropna(subset=["Date When"])
-    df["Day"] = df["Date When"].dt.date
+    lash_total = lash_df["LashFootage"].sum()
+    pull_total = pull_df["PullFootage"].sum()
+    strand_total = strand_df["StrandFootage"].sum()
+    total_projects = df["projectOr"].nunique()
 
-    min_day = df["Day"].min()
-    max_day = df["Day"].max()
-    start_date, end_date = st.date_input("📅 Date Range", [min_day, max_day], min_value=min_day, max_value=max_day)
-    df = df[(df["Day"] >= start_date) & (df["Day"] <= end_date)]
-
-    
-    total_jobs = df["WO#"].nunique()
-    avg_duration = pd.to_numeric(df["Duration"].str.extract(r"(\d+\.?\d*)")[0], errors="coerce").mean() or 0
-    unique_statuses = df["Tech Status"].nunique()
-    tech_count = df["Techinician"].nunique()
-    avg_jobs_per_tech = total_jobs / tech_count if tech_count else 0
-    num_days = (end_date - start_date).days + 1
-
-    st.markdown("### 📌 Key Performance Indicators")
-    k1, k2, k3, k4, k5, k6 = st.columns(6)
-    k1.metric("🔧 Total Jobs", total_jobs)
-    k2.metric("🕒 Avg Duration (hrs)", f"{avg_duration:.2f}")
-    k3.metric("📋 Unique Statuses", unique_statuses)
-    k4.metric("👨‍🔧 Total Technicians", tech_count)
-    k5.metric("📈 Jobs per Technician", f"{avg_jobs_per_tech:.1f}")
-    k6.metric("📆 Days Covered", num_days)
-
-    total_entries = df["WO#"].count()
-    duration_series = pd.to_numeric(df["Duration"].str.extract(r"(\d+\.?\d*)")[0], errors="coerce")
-    max_duration = duration_series.max() or 0
-    min_duration = duration_series.min() or 0
-
-    k7, k8, k9 = st.columns(3)
-    k7.metric("🧾 Total Entries", total_entries)
-    k8.metric("⏱️ Longest Duration (hrs)", f"{max_duration:.2f}")
-    k9.metric("⏱️ Shortest Duration (hrs)", f"{min_duration:.2f}")
-
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Lash Footage", f"{lash_total:,}")
+    col2.metric("Pull Footage", f"{pull_total:,}")
+    col3.metric("Strand Footage", f"{strand_total:,}")
+    col4.metric("Projects", f"{total_projects}")
 
     st.markdown("---")
+    st.header("Average Lash, Pull, Strand per Truck per Week (Filtered Range)")
 
-    grouped_overall = (df.groupby(["Techinician", "Work Type"])
-                       .agg(Total_Jobs=("WO#", "nunique"),
-                            Average_Duration=("Duration", lambda x: pd.to_numeric(x.str.extract(r"(\d+\.?\d*)")[0], errors="coerce").mean()))
-                       .reset_index())
+    lash_group = lash_df.groupby("whatTruck")["LashFootage"].sum().reset_index()
+    pull_group = pull_df.groupby("whatTruck")["PullFootage"].sum().reset_index()
+    strand_group = strand_df.groupby("whatTruck")["StrandFootage"].sum().reset_index()
 
-    fig1 = px.bar(grouped_overall, x="Work Type", y="Total_Jobs",
-                  color="Techinician", title="Total Jobs by Work Type",
-                  color_discrete_sequence=["#8BC53F"])
-    fig1.update_layout(plot_bgcolor='white', title_font_color="#4A648C")
-    st.plotly_chart(fig1, use_container_width=True)
+    merged = pd.merge(lash_group, pull_group, on="whatTruck", how="outer")
+    merged = pd.merge(merged, strand_group, on="whatTruck", how="outer")
+    merged = merged.fillna(0)
 
-    fig2 = px.bar(grouped_overall, x="Work Type", y="Average_Duration",
-                  color="Techinician", title="Avg Duration by Work Type",
-                  color_discrete_sequence=["#8BC53F"])
-    fig2.update_layout(plot_bgcolor='white', title_font_color="#4A648C")
-    st.plotly_chart(fig2, use_container_width=True)
+    merged["LashPerWeek"] = merged["LashFootage"] / weeks_in_range
+    merged["PullPerWeek"] = merged["PullFootage"] / weeks_in_range
+    merged["StrandPerWeek"] = merged["StrandFootage"] / weeks_in_range
 
-    st.markdown("### 🗂 Breakout Table: Daily Summary")
-    df_daily = (df.groupby(["Techinician", "Day", "Work Type"])
-                .agg(Jobs_Completed=("WO#", "nunique"),
-                     Total_Entries=("WO#", "count"),
-                     Avg_Duration=("Duration", lambda x: pd.to_numeric(x.str.extract(r"(\d+\.?\d*)")[0], errors="coerce").mean()))
-                .reset_index())
-    st.dataframe(df_daily, use_container_width=True)
+    melted = pd.melt(
+        merged,
+        id_vars=["whatTruck"],
+        value_vars=["LashPerWeek", "PullPerWeek", "StrandPerWeek"],
+        var_name="Type",
+        value_name="AvgFootagePerWeek"
+    )
 
-    st.markdown("### 📤 Export Overall Summary")
-    csv = grouped_overall.to_csv(index=False).encode('utf-8')
-    st.download_button("Download Summary CSV", data=csv, file_name="workorders_summary.csv", mime="text/csv")
+    fig_avg_truck = px.bar(
+        melted,
+        x="AvgFootagePerWeek",
+        y="whatTruck",
+        color="Type",
+        barmode="group",
+        orientation="h",
+        title="Average Lash, Pull, Strand per Truck per Week (Filtered Range)",
+        template="plotly_dark",
+        color_discrete_map={
+            "LashPerWeek": "#375EAB",
+            "PullPerWeek": "#8BC53F",
+            "StrandPerWeek": "#999999"
+        }
+    )
+    fig_avg_truck.update_traces(texttemplate='%{x:.0f}', textposition='auto', marker_line_width=0.5)
+    st.plotly_chart(fig_avg_truck, use_container_width=True)
+
+    st.header("Total Average per Week (All Trucks Combined)")
+
+    total_lash_per_week = merged["LashFootage"].sum() / weeks_in_range
+    total_pull_per_week = merged["PullFootage"].sum() / weeks_in_range
+    total_strand_per_week = merged["StrandFootage"].sum() / weeks_in_range
+
+    total_df = pd.DataFrame({
+        "Type": ["Lash", "Pull", "Strand"],
+        "AvgPerWeek": [total_lash_per_week, total_pull_per_week, total_strand_per_week]
+    })
+
+    fig_totals = px.bar(
+        total_df,
+        x="Type",
+        y="AvgPerWeek",
+        color="Type",
+        template="plotly_dark",
+        color_discrete_map={
+            "Lash": "#375EAB",
+            "Pull": "#8BC53F",
+            "Strand": "#999999"
+        },
+        title="Total Average per Week (All Trucks Combined)"
+    )
+    fig_totals.update_traces(texttemplate='%{y:.0f}', textposition='auto', marker_line_width=0.5)
+    st.plotly_chart(fig_totals, use_container_width=True)
+
+    st.markdown("---")
+    st.header("📋 Detailed Work Table")
+    st.dataframe(df[["Submission Date", "projectOr", "whoFilled", "whatTruck", "workHours", "typeA45", "fiberPull", "standInfo"]])
+
+if __name__ == "__main__":
+    run_construction_dashboard()
